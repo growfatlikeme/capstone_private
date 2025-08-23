@@ -1,19 +1,8 @@
-name: OIDC Project setup
-run-name: Running Terraform Checks by ${{ github.actor }}
+name: OIDC Terraform setup
+run-name: Running Terraform setup by ${{ github.actor }}
 
 on:
   workflow_dispatch:
-  workflow_call:
-    inputs:
-      environment:
-        required: true
-        type: string
-      aws_account_id:
-        required: true
-        type: string
-      team_members:
-        required: true
-        type: string
 
 permissions:
   id-token: write
@@ -21,8 +10,6 @@ permissions:
 
 jobs:
   deploy:
-    outputs:
-      cluster_name: ${{ steps.set-cluster-name.outputs.cluster_name }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -46,8 +33,8 @@ jobs:
           echo "Account ID: $TF_VAR_aws_account_id"
           echo "Team Members: $TF_VAR_team_members"
         env:
-          TF_VAR_aws_account_id: ${{ inputs.aws_account_id }}
-          TF_VAR_team_members: ${{ inputs.team_members }}
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          TF_VAR_team_members: '["${{ secrets.MEM1 }}","${{ secrets.MEM2 }}","${{ secrets.MEM3 }}","${{ secrets.MEM4 }}","${{ secrets.MEM5 }}"]'
 
       - name: Terraform Init
         working-directory: terraform
@@ -57,9 +44,5 @@ jobs:
         working-directory: terraform
         run: terraform apply --auto-approve
         env:
-          TF_VAR_aws_account_id: ${{ inputs.aws_account_id }}
-          TF_VAR_team_members: ${{ inputs.team_members }}
-
-      - name: Set cluster name output
-        id: set-cluster-name
-        run: echo "cluster_name=growfattest-cluster" >> $GITHUB_OUTPUT
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
+          TF_VAR_team_members: '["${{ secrets.MEM1 }}","${{ secrets.MEM2 }}","${{ secrets.MEM3 }}","${{ secrets.MEM4 }}","${{ secrets.MEM5 }}"]'
