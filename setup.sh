@@ -27,7 +27,11 @@ echo "📊 Installing Prometheus Stack..."
 helm upgrade --install kube-prometheus-stack \
   --create-namespace \
   --namespace kube-prometheus-stack \
-  -f \monitoring_cluster/alertmanager-config.yaml \
+  -f monitoring_cluster/alertmanager-config.yaml \
+  --set grafana.service.type=LoadBalancer \
+  --set grafana.additionalDataSources[0].name=Loki \
+  --set grafana.additionalDataSources[0].type=loki \
+  --set grafana.additionalDataSources[0].url=http://loki.logging.svc.cluster.local:3100 \
   prometheus-community/kube-prometheus-stack
 
 # Retrieving Grafana 'admin' user password
@@ -37,3 +41,21 @@ kubectl --namespace kube-prometheus-stack get secrets kube-prometheus-stack-graf
 # Install Discord Bridge
 echo "💬 Installing Discord Bridge..."
 kubectl apply -f monitoring_cluster/discord-bridge.yaml
+
+# Install Loki Stack
+echo "📝 Installing Loki for logging..."
+helm repo add grafana https://grafana.github.io/helm-charts
+helm repo update
+
+# Create logging namespace
+kubectl create namespace logging --dry-run=client -o yaml | kubectl apply -f -
+
+# Install Loki
+helm upgrade --install loki grafana/loki \
+  --namespace logging \
+  -f logging/loki-values.yaml
+
+# Install Promtail
+helm upgrade --install promtail grafana/promtail \
+  --namespace logging \
+  -f logging/promtail-values.yaml
