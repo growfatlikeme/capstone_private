@@ -22,7 +22,42 @@ sleep 30  # Give it time to install
 # Add Helm repos
 echo "📋 Adding Helm repositories..."
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 2>/dev/null || true
+helm repo add jetstack https://charts.jetstack.io 2>/dev/null || true
+helm repo add external-dns https://kubernetes-sigs.github.io/external-dns/ 2>/dev/null || true
 helm repo update
+
+# Install Nginx Ingress Controller
+echo "🌐 Installing Nginx Ingress Controller..."
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx \
+  --create-namespace \
+  --set controller.service.type=LoadBalancer
+
+# Install cert-manager
+echo "🔒 Installing cert-manager..."
+helm upgrade --install cert-manager jetstack/cert-manager \
+  --namespace cert-manager \
+  --create-namespace \
+  --set installCRDs=true
+
+# Install external-dns
+echo "🌍 Installing external-dns..."
+helm upgrade --install external-dns external-dns/external-dns \
+  --namespace kube-system \
+  --set provider=aws \
+  --set aws.region=ap-southeast-1 \
+  --set txtOwnerId=growfattest-cluster \
+  --set serviceAccount.create=true \
+  --set serviceAccount.annotations."eks\.amazonaws\.com/role-arn"=arn:aws:iam::255945442255:role/external-dns-role
+
+# Wait for cert-manager to be ready
+echo "⏳ Waiting for cert-manager to be ready..."
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=cert-manager -n cert-manager --timeout=300s
+
+# Apply ClusterIssuer
+echo "🔐 Applying ClusterIssuer..."
+kubectl apply -f snakegame/clusterissuer.yaml
 
 # Install Prometheus Stack
 echo "📊 Installing Prometheus Stack..."
@@ -73,10 +108,12 @@ kubectl rollout restart deployment/kube-prometheus-stack-grafana -n kube-prometh
 echo "🐍 Deploying Snake Game Frontend..."
 kubectl create namespace snakegame --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f snakegame/snakegame.yaml
+kubectl apply -f snakegame/ingress.yaml
 
-# Get Snake Game LoadBalancer endpoint
-echo "🎮 Getting Snake Game LoadBalancer endpoint..."
-echo "🐍 Snake Game URL:"
+# Get Snake Game URLs
+echo "🎮 Snake Game URLs:"
+echo "🐍 DNS URL: https://g3-snakegame.sctp-sandbox.com"
+echo "🐍 LoadBalancer URL:"
 kubectl get svc snake-frontend-service -n snakegame -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo
 
 
@@ -87,8 +124,8 @@ pkill -f "kubectl.*port-forward" 2>/dev/null || true
 sleep 2
 
 echo "🌐 Setting up port forwarding for UI access..."
-echo "📊 Grafana UI: http://localhost:8080"
-kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-grafana 8080:80 &
+echo "📊 Grafana UI: http://localhost:3000"
+kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-grafana 3000:80 &
 
 echo "📈 Prometheus UI: http://localhost:8081"
 kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-prometheus 8081:9090 &
