@@ -1,33 +1,21 @@
-auth_enabled: false
-
-storage:
-  type: s3
-  s3:
-    s3: s3://sctp-ce10-tfstate/group3_eks_logging
-    region: ap-southeast-1
-    s3ForcePathStyle: false
-
-schemaConfig:
-  configs:
-    - from: 2020-10-24
-      store: boltdb-shipper
-      object_store: s3
-      schema: v11
-      index:
-        prefix: index_
-        period: 24h
-
-storageConfig:
-  boltdb_shipper:
-    active_index_directory: /loki/boltdb-shipper-active
-    cache_location: /loki/boltdb-shipper-cache
-    shared_store: s3
+loki:
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: 's3'
+    bucketNames:
+      chunks: sctp-ce10-tfstate
+      ruler: sctp-ce10-tfstate
+      admin: sctp-ce10-tfstate
+    s3:
+      region: ap-southeast-1
+      s3ForcePathStyle: false
+      bucketPrefix: group3_eks_logging/
 
 serviceAccount:
   create: true
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::255945442255:role/loki-s3-role
 
-persistence:
-  enabled: true
-  size: 10Gi
+singleBinary:
+  replicas: 1

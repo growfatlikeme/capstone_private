@@ -1,5 +1,5 @@
-name: OIDC Terraform setup
-run-name: Running Terraform setup by ${{ github.actor }}
+name: OIDC Terraform teardown
+run-name: Running Terraform teardown by ${{ github.actor }}
 
 on:
   workflow_dispatch:
