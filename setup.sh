@@ -28,7 +28,7 @@ helm upgrade --install kube-prometheus-stack \
   --create-namespace \
   --namespace kube-prometheus-stack \
   -f ~/capstone_private/monitoring_cluster/alertmanager-config.yaml \
-  prometheus-commungroup3-sreity/kube-prometheus-stack
+  prometheus-community/kube-prometheus-stack
 
 # Retrieving Grafana 'admin' user password
 echo "🔑 Retrieving Grafana 'admin' user password..."
