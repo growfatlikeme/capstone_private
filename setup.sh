@@ -69,6 +69,16 @@ echo "🔗 Adding Loki datasource to Grafana..."
 kubectl apply -f logging/loki-datasource.yaml
 kubectl rollout restart deployment/kube-prometheus-stack-grafana -n kube-prometheus-stack
 
+# Deploy Snake Game Frontend
+echo "🐍 Deploying Snake Game Frontend..."
+kubectl create namespace snakegame --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -f snakegame/snakegame.yaml
+
+# Get Snake Game LoadBalancer endpoint
+echo "🎮 Getting Snake Game LoadBalancer endpoint..."
+echo "🐍 Snake Game URL:"
+kubectl get svc snake-frontend-service -n snakegame -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' && echo
+
 
 
 # Port Forwarding for UI Access
