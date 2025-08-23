@@ -1,12 +1,10 @@
 locals {
   team_member_arns = toset([
-    format("arn:aws:iam::%s:user/%s", var.aws_account_id, var.mem1),
-    format("arn:aws:iam::%s:user/%s", var.aws_account_id, var.mem2),
-    format("arn:aws:iam::%s:user/%s", var.aws_account_id, var.mem3),
-    format("arn:aws:iam::%s:user/%s", var.aws_account_id, var.mem4),
-    format("arn:aws:iam::%s:user/%s", var.aws_account_id, var.mem5),
+    for member in var.team_members :
+    format("arn:aws:iam::%s:user/%s", var.aws_account_id, member)
   ])
 }
+
 
 # Grant cluster admin access to team members
 resource "aws_eks_access_entry" "team_members" {

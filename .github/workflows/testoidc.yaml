@@ -33,30 +33,18 @@ jobs:
         run: terraform init
         env:
           TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
-          TF_VAR_mem1: ${{ secrets.MEM1 }}
-          TF_VAR_mem2: ${{ secrets.MEM2 }}
-          TF_VAR_mem3: ${{ secrets.MEM3 }}
-          TF_VAR_mem4: ${{ secrets.MEM4 }}
-          TF_VAR_mem5: ${{ secrets.MEM5 }}
+          TF_VAR_team_members: '["${{ secrets.MEM1 }}","${{ secrets.MEM2 }}","${{ secrets.MEM3 }}","${{ secrets.MEM4 }}","${{ secrets.MEM5 }}"]'
 
       - name: Terraform Plan
         working-directory: terraform
         run: terraform plan
         env:
           TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
-          TF_VAR_mem1: ${{ secrets.MEM1 }}
-          TF_VAR_mem2: ${{ secrets.MEM2 }}
-          TF_VAR_mem3: ${{ secrets.MEM3 }}
-          TF_VAR_mem4: ${{ secrets.MEM4 }}
-          TF_VAR_mem5: ${{ secrets.MEM5 }}
+          TF_VAR_team_members: '["${{ secrets.MEM1 }}","${{ secrets.MEM2 }}","${{ secrets.MEM3 }}","${{ secrets.MEM4 }}","${{ secrets.MEM5 }}"]'
 
       - name: Terraform Apply
         working-directory: terraform
         run: terraform apply --auto-approve
         env:
           TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
-          TF_VAR_mem1: ${{ secrets.MEM1 }}
-          TF_VAR_mem2: ${{ secrets.MEM2 }}
-          TF_VAR_mem3: ${{ secrets.MEM3 }}
-          TF_VAR_mem4: ${{ secrets.MEM4 }}
-          TF_VAR_mem5: ${{ secrets.MEM5 }}
+          TF_VAR_team_members: '["${{ secrets.MEM1 }}","${{ secrets.MEM2 }}","${{ secrets.MEM3 }}","${{ secrets.MEM4 }}","${{ secrets.MEM5 }}"]'

@@ -27,3 +27,9 @@ variable "mem5" {
   description = "Team member 5 username"
   type        = string
 }
+
+
+variable "team_members" {
+  type    = list(string)
+}
+
