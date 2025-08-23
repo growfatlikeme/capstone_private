@@ -13,7 +13,7 @@ sleep 30  # Give it time to install
 
 # Install OpenLens service account
 echo "💬 Adding OpenLens access..."
-kubectl apply -f ~/capstone_private/openlens.yaml
+kubectl apply -f openlens.yaml
 kubectl -n kube-system get secret openlens-access-token -o jsonpath="{.data.token}" | base64 --decode
 
 # Phase 2: Setup EKS Observability
@@ -27,7 +27,7 @@ echo "📊 Installing Prometheus Stack..."
 helm upgrade --install kube-prometheus-stack \
   --create-namespace \
   --namespace kube-prometheus-stack \
-  -f ~/capstone_private/monitoring_cluster/alertmanager-config.yaml \
+  -f \monitoring_cluster/alertmanager-config.yaml \
   prometheus-community/kube-prometheus-stack
 
 # Retrieving Grafana 'admin' user password
@@ -36,4 +36,4 @@ kubectl --namespace kube-prometheus-stack get secrets kube-prometheus-stack-graf
 
 # Install Discord Bridge
 echo "💬 Installing Discord Bridge..."
-kubectl apply -f ~/capstone_private/monitoring_cluster/discord-bridge.yaml
+kubectl apply -f monitoring_cluster/discord-bridge.yaml
