@@ -1,10 +1,11 @@
 # Grant cluster admin access to team members
 resource "aws_eks_access_entry" "team_members" {
   for_each = toset([
-    "arn:aws:iam::255945442255:user/kevinczkm",
-    "arn:aws:iam::255945442255:user/wcywong",
-    "arn:aws:iam::255945442255:user/krisbianto",
-    "arn:aws:iam::255945442255:user/hanna-ce10",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem1}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem2}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem3}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem4}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem5}",
   ])
 
   cluster_name  = module.eks.cluster_name
@@ -15,11 +16,11 @@ resource "aws_eks_access_entry" "team_members" {
 # Use policy association for admin permissions
 resource "aws_eks_access_policy_association" "team_admin_policy" {
   for_each = toset([
-    "arn:aws:iam::255945442255:user/kevinczkm",
-    "arn:aws:iam::255945442255:user/wcywong",
-    "arn:aws:iam::255945442255:user/krisbianto",
-    "arn:aws:iam::255945442255:user/hanna-ce10",
-    
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem1}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem2}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem3}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem4}",
+    "arn:aws:iam::${var.aws_account_id}:user/${var.mem5}",
   ])
 
   cluster_name  = module.eks.cluster_name
