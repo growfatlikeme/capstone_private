@@ -1,4 +1,4 @@
-name: Project setup
+name: OIDC Project setup
 run-name: Running Terraform Checks by ${{ github.actor }}
 
 on:

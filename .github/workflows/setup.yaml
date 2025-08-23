@@ -1,4 +1,4 @@
-name: Project setup
+name: Project setup Private access
 run-name: Running Terraform Checks by ${{ github.actor }}
 
 on:
