@@ -144,13 +144,13 @@ sleep 2
 # Setup port forwarding
 echo "  • Setting up port forwarding..."
 kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-grafana 3000:80 >/dev/null 2>&1 &
-kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-prometheus 8081:9090 >/dev/null 2>&1 &
-kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-alertmanager 8082:9093 >/dev/null 2>&1 &
+kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-prometheus 3001:9090 >/dev/null 2>&1 &
+kubectl --namespace kube-prometheus-stack port-forward svc/kube-prometheus-stack-alertmanager 3002:9093 >/dev/null 2>&1 &
 
 echo ""
 echo "📊 Grafana:      http://localhost:3000"
-echo "📈 Prometheus:   http://localhost:8081"
-echo "🚨 Alertmanager: http://localhost:8082"
+echo "📈 Prometheus:   http://localhost:3001"
+echo "🚨 Alertmanager: http://localhost:3002"
 
 echo ""
 echo "==============================================="
