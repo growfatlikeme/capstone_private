@@ -1,0 +1,15 @@
+[
+  {
+    "labels": {
+      "alertname": "TestAlert",
+      "service": "test-service",
+      "severity": "warning",
+      "instance": "localhost:9090"
+    },
+    "annotations": {
+      "summary": "This is a test alert",
+      "description": "Testing Discord integration with Alertmanager"
+    },
+    "generatorURL": "http://localhost:9090/graph"
+  }
+]

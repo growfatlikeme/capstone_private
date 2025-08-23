@@ -1,0 +1,56 @@
+alertmanager:
+  alertmanagerSpec:
+    replicas: 2
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: group3-webhook
+      group_wait: 5s
+      group_interval: 10s
+      repeat_interval: 1h
+    receivers:
+      - name: "null"
+      - name: group3-webhook
+        webhook_configs:
+          - url: http://alertmanager-discord.kube-prometheus-stack:9094
+            send_resolved: true
+
+# Disable control plane alerts for EKS to reduce false positives.
+# AWS manages the control plane components and doesn't expose their metrics endpoints to users.
+defaultRules:
+  rules:
+    kubeControllerManager: false
+    kubeScheduler: false
+
+prometheus:
+  prometheusSpec:
+    additionalPrometheusRulesMap:
+      custom-rules:
+        groups:
+          - name: node-efficiency
+        rules:
+          - alert: HostCpuIsUnderutilized
+            expr: (min by (instance) (rate(node_cpu_seconds_total{mode="idle"}[1h]))) > 0.8
+            for: 1d
+            labels:
+              severity: info
+            annotations:
+              summary: "Host CPU is underutilized (instance {{ $labels.instance }})"
+              description: "CPU load has been < 20% for 10 min. Consider reducing the number of CPUs.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+          - alert: HostMemoryIsUnderutilized
+            expr: (min by (instance) (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100)) > 80
+            for: 1d
+            labels:
+              severity: info
+            annotations:
+              summary: "Host memory is underutilized (instance {{ $labels.instance }})"
+              description: "Available memory is less than 20%.\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+          - alert: HighMemoryUsage
+            expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+            for: 2m
+            labels:
+              severity: critical
+            annotations:
+              summary: "High memory usage detected"
+              description: "Memory usage is above 85% for more than 2 minutes"
