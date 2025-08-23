@@ -4,26 +4,26 @@ variable "aws_account_id" {
 }
 
 variable "mem1" {
-  description = "Member 1"
+  description = "Team member 1 username"
   type        = string
 }
 
 variable "mem2" {
-  description = "Member 2"
+  description = "Team member 2 username"
   type        = string
 }
 
 variable "mem3" {
-  description = "Member 3"
+  description = "Team member 3 username"
   type        = string
 }
 
 variable "mem4" {
-  description = "Member 4"
+  description = "Team member 4 username"
   type        = string
 }
 
 variable "mem5" {
-  description = "Member 5"
+  description = "Team member 5 username"
   type        = string
 }
