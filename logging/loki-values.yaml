@@ -32,6 +32,13 @@ singleBinary:
   replicas: 1
   persistence:
     enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
   extraVolumes:
     - name: loki-data
       emptyDir: {}
@@ -45,3 +52,8 @@ write:
   replicas: 0
 backend:
   replicas: 0
+
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
