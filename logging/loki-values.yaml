@@ -1,18 +1,27 @@
 deploymentMode: SingleBinary
 
 loki:
+  auth_enabled: false
   commonConfig:
     replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: 2020-10-24
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
   storage:
     type: 's3'
     bucketNames:
-      chunks: sctp-ce10-tfstate
-      ruler: sctp-ce10-tfstate
-      admin: sctp-ce10-tfstate
+      chunks: growfattest-logging
+      ruler: growfattest-logging
+      admin: growfattest-logging
     s3:
       region: ap-southeast-1
       s3ForcePathStyle: false
-      bucketPrefix: group3_eks_logging/
 
 serviceAccount:
   create: true
@@ -21,3 +30,18 @@ serviceAccount:
 
 singleBinary:
   replicas: 1
+  persistence:
+    enabled: false
+  extraVolumes:
+    - name: loki-data
+      emptyDir: {}
+  extraVolumeMounts:
+    - name: loki-data
+      mountPath: /var/loki
+
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0

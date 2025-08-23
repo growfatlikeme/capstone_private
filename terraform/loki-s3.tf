@@ -34,17 +34,12 @@ resource "aws_iam_policy" "loki_s3_policy" {
           "s3:PutObject",
           "s3:DeleteObject"
         ]
-        Resource = "arn:aws:s3:::sctp-ce10-tfstate/group3_eks_logging/*"
+        Resource = "arn:aws:s3:::growfattest-logging/*"
       },
       {
         Effect = "Allow"
         Action = "s3:ListBucket"
-        Resource = "arn:aws:s3:::sctp-ce10-tfstate"
-        Condition = {
-          StringLike = {
-            "s3:prefix" = "group3_eks_logging/*"
-          }
-        }
+        Resource = "arn:aws:s3:::growfattest-logging"
       }
     ]
   })
