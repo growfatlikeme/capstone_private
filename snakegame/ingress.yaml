@@ -3,15 +3,8 @@ kind: Ingress
 metadata:
   name: snake-frontend-ingress
   namespace: snakegame
-  annotations:
-    external-dns.alpha.kubernetes.io/hostname: g3-snakegame.sctp-sandbox.com
-    cert-manager.io/cluster-issuer: letsencrypt-prod # 👈 Needed for cert-manager
 spec:
   ingressClassName: nginx
-  tls:
-    - hosts:
-        - g3-snakegame.sctp-sandbox.com
-      secretName: snake-frontend-tls # 👈 cert-manager will create this secret
   rules:
     - host: g3-snakegame.sctp-sandbox.com
       http:

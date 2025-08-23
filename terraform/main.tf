@@ -66,7 +66,6 @@ module "vpc" {
   azs                     = data.aws_availability_zones.available.names
   public_subnets          = ["172.31.101.0/24", "172.31.102.0/24", "172.31.103.0/24"]
   private_subnets         = ["172.31.1.0/24", "172.31.2.0/24", "172.31.3.0/24"]
-  database_subnets        = ["172.31.51.0/24", "172.31.52.0/24", "172.31.53.0/24"]
   enable_nat_gateway      = true
   single_nat_gateway      = true
   map_public_ip_on_launch = true
@@ -78,8 +77,5 @@ module "vpc" {
   private_subnet_tags = {
     "kubernetes.io/role/internal-elb" = 1
   }
-  database_subnet_tags = {
-    "kubernetes.io/role/database" = 1
-  }  
   
 }
