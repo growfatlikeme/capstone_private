@@ -64,10 +64,6 @@ helm upgrade --install kube-prometheus-stack \
 echo "  • Installing Discord alerting bridge..."
 kubectl apply -f monitoring_cluster/discord-bridge.yaml
 
-# Install custom Prometheus rules
-echo "  • Installing custom Prometheus rules..."
-kubectl apply -f monitoring_cluster/custom-rules.yaml
-
 #------------------------------------------------------------------------------
 # Phase 4: Logging Stack
 #------------------------------------------------------------------------------
