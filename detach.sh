@@ -119,30 +119,6 @@ for entry in $ALLOC_IDS; do
   fi
 done
 
-#------------------------------------------------------------------------------
-# Phase 5: Delete ENIs (Only if detached)
-#------------------------------------------------------------------------------
-echo "🔌 Deleting detached Elastic Network Interfaces..."
-ENI_IDS=$(aws ec2 describe-network-interfaces \
-  --region $REGION \
-  --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query "NetworkInterfaces[].NetworkInterfaceId" \
-  --output text)
-
-for eni in $ENI_IDS; do
-  STATUS=$(aws ec2 describe-network-interfaces \
-    --region $REGION \
-    --network-interface-ids $eni \
-    --query "NetworkInterfaces[0].Status" \
-    --output text)
-
-  if [[ "$STATUS" == "available" ]]; then
-    echo "  • Deleting ENI: $eni"
-    aws ec2 delete-network-interface --region $REGION --network-interface-id $eni
-  else
-    echo "  • Skipping ENI: $eni (status: $STATUS)"
-  fi
-done
 
 #------------------------------------------------------------------------------
 # Phase 6: Delete Security Groups (non-default)
