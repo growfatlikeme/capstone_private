@@ -21,8 +21,12 @@ echo ""
 #------------------------------------------------------------------------------
 echo "🌐 Phase 1: Stopping port forwarding..."
 
-echo "  • Killing all kubectl port-forward processes..."
-pkill -f "kubectl.*port-forward" 2>/dev/null || true
+echo "  • Attempting to kill kubectl port-forward processes..."
+if pkill -f "kubectl.*port-forward" 2>/dev/null; then
+  echo "    - Port forwarding processes terminated."
+else
+  echo "    - No active port forwarding processes found. Skipping."
+fi
 sleep 2
 
 #------------------------------------------------------------------------------
