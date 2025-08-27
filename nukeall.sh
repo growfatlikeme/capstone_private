@@ -17,17 +17,16 @@ echo "==============================================="
 echo ""
 
 #------------------------------------------------------------------------------
-# Phase 1: Stop Port Forwarding
+# Phase 1: (Removed) Stop Port Forwarding
 #------------------------------------------------------------------------------
-echo "🌐 Phase 1: Stopping port forwarding..."
-
-echo "  • Attempting to kill kubectl port-forward processes..."
-if pkill -f "kubectl.*port-forward" 2>/dev/null; then
-  echo "    - Port forwarding processes terminated."
-else
-  echo "    - No active port forwarding processes found. Skipping."
-fi
-sleep 2
+# echo "🌐 Phase 1: Stopping port forwarding..."
+# echo "  • Attempting to kill kubectl port-forward processes..."
+# if pkill -f "kubectl.*port-forward" 2>/dev/null; then
+#   echo "    - Port forwarding processes terminated."
+# else
+#   echo "    - No active port forwarding processes found. Skipping."
+# fi
+# sleep 2
 
 #------------------------------------------------------------------------------
 # Phase 2: Remove Applications
