@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #==============================================================================
-# VPC Dependency Cleanup Script (Enhanced)
+# VPC Dependency Cleanup Script (Optimized)
 # Description: Removes all dependent resources from a specific VPC to allow
 #              Terraform to destroy it cleanly.
 #==============================================================================
@@ -48,51 +48,7 @@ else
 fi
 
 #------------------------------------------------------------------------------
-# Phase 2: Delete NAT Gateways
-#------------------------------------------------------------------------------
-echo "🌐 Deleting NAT Gateways..."
-NAT_IDS=$(aws ec2 describe-nat-gateways \
-  --region $REGION \
-  --filter "Name=vpc-id,Values=$VPC_ID" \
-  --query "NatGateways[].NatGatewayId" \
-  --output text)
-
-for nat in $NAT_IDS; do
-  echo "  • Deleting NAT Gateway: $nat"
-  aws ec2 delete-nat-gateway --region $REGION --nat-gateway-id $nat
-done
-
-echo "  • Waiting for NAT Gateways to be deleted..."
-sleep 30
-
-#------------------------------------------------------------------------------
-# Phase 3: Release Elastic IPs (Scoped to VPC)
-#------------------------------------------------------------------------------
-echo "⚡ Releasing Elastic IPs attached to VPC: $VPC_ID..."
-
-ALLOC_IDS=$(aws ec2 describe-addresses \
-  --region $REGION \
-  --query "Addresses[?NetworkInterfaceId!=null].{AllocId:AllocationId,ENI:NetworkInterfaceId}" \
-  --output json | jq -r '.[] | "\(.AllocId) \(.ENI)"')
-
-for entry in $ALLOC_IDS; do
-  ALLOC_ID=$(echo $entry | awk '{print $1}')
-  ENI_ID=$(echo $entry | awk '{print $2}')
-
-  ENI_VPC_ID=$(aws ec2 describe-network-interfaces \
-    --region $REGION \
-    --network-interface-ids $ENI_ID \
-    --query "NetworkInterfaces[0].VpcId" \
-    --output text)
-
-  if [[ "$ENI_VPC_ID" == "$VPC_ID" ]]; then
-    echo "  • Releasing EIP: $ALLOC_ID (attached to ENI: $ENI_ID)"
-    aws ec2 release-address --region $REGION --allocation-id $ALLOC_ID
-  fi
-done
-
-#------------------------------------------------------------------------------
-# Phase 4: Delete Load Balancers in VPC
+# Phase 2: Delete Load Balancers in VPC
 #------------------------------------------------------------------------------
 echo "🧨 Deleting Load Balancers attached to VPC: $VPC_ID..."
 
@@ -120,6 +76,50 @@ done
 
 echo "  • Waiting for load balancer cleanup..."
 sleep 20
+
+#------------------------------------------------------------------------------
+# Phase 3: Delete NAT Gateways
+#------------------------------------------------------------------------------
+echo "🌐 Deleting NAT Gateways..."
+NAT_IDS=$(aws ec2 describe-nat-gateways \
+  --region $REGION \
+  --filter "Name=vpc-id,Values=$VPC_ID" \
+  --query "NatGateways[].NatGatewayId" \
+  --output text)
+
+for nat in $NAT_IDS; do
+  echo "  • Deleting NAT Gateway: $nat"
+  aws ec2 delete-nat-gateway --region $REGION --nat-gateway-id $nat
+done
+
+echo "  • Waiting for NAT Gateways to be deleted..."
+sleep 30
+
+#------------------------------------------------------------------------------
+# Phase 4: Release Elastic IPs (Scoped to VPC)
+#------------------------------------------------------------------------------
+echo "⚡ Releasing Elastic IPs attached to VPC: $VPC_ID..."
+
+ALLOC_IDS=$(aws ec2 describe-addresses \
+  --region $REGION \
+  --query "Addresses[?NetworkInterfaceId!=null].{AllocId:AllocationId,ENI:NetworkInterfaceId}" \
+  --output json | jq -r '.[] | "\(.AllocId) \(.ENI)"')
+
+for entry in $ALLOC_IDS; do
+  ALLOC_ID=$(echo $entry | awk '{print $1}')
+  ENI_ID=$(echo $entry | awk '{print $2}')
+
+  ENI_VPC_ID=$(aws ec2 describe-network-interfaces \
+    --region $REGION \
+    --network-interface-ids $ENI_ID \
+    --query "NetworkInterfaces[0].VpcId" \
+    --output text)
+
+  if [[ "$ENI_VPC_ID" == "$VPC_ID" ]]; then
+    echo "  • Releasing EIP: $ALLOC_ID (attached to ENI: $ENI_ID)"
+    aws ec2 release-address --region $REGION --allocation-id $ALLOC_ID
+  fi
+done
 
 #------------------------------------------------------------------------------
 # Phase 5: Delete ENIs (Only if detached)
