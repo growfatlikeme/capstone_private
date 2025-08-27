@@ -1,13 +1,11 @@
 #!/bin/bash
 
 #==============================================================================
-# EKS Cluster Teardown Script (Resilient & Version-Safe)
+# EKS Cluster Teardown Script (Debug-Friendly & Resilient)
 # Description: Safely removes all applications, monitoring, logging, and 
 #              infrastructure components from EKS cluster.
 #              Skips kubectl operations if cluster is unreachable.
 #==============================================================================
-
-set -e  # Exit on any error
 
 echo "💥 Starting EKS Cluster Teardown..."
 echo "==============================================="
@@ -34,7 +32,7 @@ fi
 echo "🐍 Phase 1: Removing applications..."
 if [ "$SKIP_K8S" = false ]; then
   echo "  • Removing Snake Game application..."
-  kubectl delete namespace snakegame --ignore-not-found
+  kubectl delete namespace snakegame --ignore-not-found || echo "⚠️ Failed to delete namespace: snakegame"
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -44,10 +42,10 @@ fi
 #------------------------------------------------------------------------------
 echo "📝 Phase 2: Removing logging stack..."
 if [ "$SKIP_K8S" = false ]; then
-  helm uninstall promtail -n logging || true
-  helm uninstall loki -n logging || true
-  kubectl delete -f logging/loki-datasource.yaml --ignore-not-found
-  kubectl delete namespace logging --ignore-not-found
+  helm uninstall promtail -n logging || echo "⚠️ Failed to uninstall promtail"
+  helm uninstall loki -n logging || echo "⚠️ Failed to uninstall loki"
+  kubectl delete -f logging/loki-datasource.yaml --ignore-not-found || echo "⚠️ Failed to delete Loki datasource"
+  kubectl delete namespace logging --ignore-not-found || echo "⚠️ Failed to delete namespace: logging"
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -57,15 +55,15 @@ fi
 #------------------------------------------------------------------------------
 echo "📈 Phase 3: Removing monitoring stack..."
 if [ "$SKIP_K8S" = false ]; then
-  kubectl delete -f monitoring_cluster/discord-bridge.yaml --ignore-not-found
-  kubectl delete -f monitoring_cluster/alertmanager-config.yaml --ignore-not-found
-  helm uninstall kube-prometheus-stack -n kube-prometheus-stack || true
-  kubectl delete namespace kube-prometheus-stack --ignore-not-found
+  kubectl delete -f monitoring_cluster/discord-bridge.yaml --ignore-not-found || echo "⚠️ Failed to delete Discord bridge"
+  kubectl delete -f monitoring_cluster/alertmanager-config.yaml --ignore-not-found || echo "⚠️ Failed to delete Alertmanager config"
+  helm uninstall kube-prometheus-stack -n kube-prometheus-stack || echo "⚠️ Failed to uninstall Prometheus stack"
+  kubectl delete namespace kube-prometheus-stack --ignore-not-found || echo "⚠️ Failed to delete namespace: kube-prometheus-stack"
   kubectl delete crd alertmanagers.monitoring.coreos.com \
     prometheuses.monitoring.coreos.com \
     servicemonitors.monitoring.coreos.com \
     podmonitors.monitoring.coreos.com \
-    thanosrulers.monitoring.coreos.com || true
+    thanosrulers.monitoring.coreos.com || echo "⚠️ Failed to delete monitoring CRDs"
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -75,8 +73,8 @@ fi
 #------------------------------------------------------------------------------
 echo "🏠 Phase 4: Removing infrastructure components..."
 if [ "$SKIP_K8S" = false ]; then
-  helm uninstall ingress-nginx -n ingress-nginx || true
-  kubectl delete namespace ingress-nginx --ignore-not-found
+  helm uninstall ingress-nginx -n ingress-nginx || echo "⚠️ Failed to uninstall ingress-nginx"
+  kubectl delete namespace ingress-nginx --ignore-not-found || echo "⚠️ Failed to delete namespace: ingress-nginx"
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -86,8 +84,8 @@ fi
 #------------------------------------------------------------------------------
 echo "🔧 Phase 5: Removing access components..."
 if [ "$SKIP_K8S" = false ]; then
-  kubectl delete -f openlens.yaml --ignore-not-found
-  kubectl delete clusterrolebinding openlens-access --ignore-not-found
+  kubectl delete -f openlens.yaml --ignore-not-found || echo "⚠️ Failed to delete OpenLens service account"
+  kubectl delete clusterrolebinding openlens-access --ignore-not-found || echo "⚠️ Failed to delete OpenLens clusterrolebinding"
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -101,7 +99,7 @@ if [ "$SKIP_K8S" = false ]; then
   kubectl get pvc --all-namespaces --no-headers | while read namespace name rest; do
     if [[ "$namespace" != "default" && "$namespace" != "kube-system" && "$namespace" != "kube-public" && "$namespace" != "kube-node-lease" ]]; then
       echo "    - Removing PVC: $namespace/$name"
-      kubectl delete pvc "$name" -n "$namespace" --force --grace-period=0 || true
+      kubectl delete pvc "$name" -n "$namespace" --force --grace-period=0 || echo "⚠️ Failed to delete PVC: $namespace/$name"
     fi
   done
 
@@ -109,7 +107,7 @@ if [ "$SKIP_K8S" = false ]; then
   for ns in snakegame logging kube-prometheus-stack ingress-nginx; do
     if kubectl get namespace "$ns" >/dev/null 2>&1; then
       echo "    - Force cleaning namespace: $ns"
-      kubectl delete namespace "$ns" --force --grace-period=0 || true
+      kubectl delete namespace "$ns" --force --grace-period=0 || echo "⚠️ Failed to force delete namespace: $ns"
     fi
   done
 else
@@ -117,7 +115,7 @@ else
 fi
 
 echo "  • Cleaning Helm cache (optional)..."
-rm -rf ~/.helm || true
+rm -rf ~/.helm || echo "⚠️ Failed to clean Helm cache"
 
 #------------------------------------------------------------------------------
 # Phase 7: Verification
