@@ -1,9 +1,10 @@
 #!/bin/bash
 
 #==============================================================================
-# EKS Cluster Teardown Script
-# Description: Safely removes all applications and resources from EKS cluster
-#              (Does NOT destroy the cluster itself - use GitHub workflow)
+# EKS Cluster Teardown Script (Enhanced)
+# Description: Safely removes all applications, monitoring, logging, and 
+#              infrastructure components from EKS cluster.
+#              Does NOT destroy the cluster itself—use GitHub workflow for that.
 #==============================================================================
 
 set -e  # Exit on any error
@@ -14,7 +15,6 @@ echo "⚠️  WARNING: This will remove ALL applications from the cluster!"
 echo "⚠️  The cluster itself will remain (use GitHub workflow to destroy)"
 echo "==============================================="
 echo ""
-echo "🔥 Beginning teardown process..."
 
 #------------------------------------------------------------------------------
 # Phase 1: Stop Port Forwarding
@@ -30,7 +30,6 @@ sleep 2
 #------------------------------------------------------------------------------
 echo "🐍 Phase 2: Removing applications..."
 
-# Remove Snake Game
 echo "  • Removing Snake Game application..."
 kubectl delete namespace snakegame --ignore-not-found=true
 
@@ -39,15 +38,15 @@ kubectl delete namespace snakegame --ignore-not-found=true
 #------------------------------------------------------------------------------
 echo "📝 Phase 3: Removing logging stack..."
 
-# Remove Promtail
 echo "  • Uninstalling Promtail..."
 helm uninstall promtail -n logging 2>/dev/null || true
 
-# Remove Loki
 echo "  • Uninstalling Loki..."
 helm uninstall loki -n logging 2>/dev/null || true
 
-# Remove logging namespace
+echo "  • Removing Loki datasource from Grafana..."
+kubectl delete -f logging/loki-datasource.yaml --ignore-not-found=true
+
 echo "  • Removing logging namespace..."
 kubectl delete namespace logging --ignore-not-found=true
 
@@ -56,28 +55,33 @@ kubectl delete namespace logging --ignore-not-found=true
 #------------------------------------------------------------------------------
 echo "📈 Phase 4: Removing monitoring stack..."
 
-# Remove Discord Bridge
-echo "  • Removing Discord bridge..."
+echo "  • Removing Discord alerting bridge..."
 kubectl delete -f monitoring_cluster/discord-bridge.yaml --ignore-not-found=true
 
-# Remove Prometheus Stack
+echo "  • Removing Alertmanager config..."
+kubectl delete -f monitoring_cluster/alertmanager-config.yaml --ignore-not-found=true
+
 echo "  • Uninstalling Prometheus stack..."
 helm uninstall kube-prometheus-stack -n kube-prometheus-stack 2>/dev/null || true
 
-# Remove monitoring namespace
 echo "  • Removing kube-prometheus-stack namespace..."
 kubectl delete namespace kube-prometheus-stack --ignore-not-found=true
+
+echo "  • Removing lingering CRDs..."
+kubectl delete crd alertmanagers.monitoring.coreos.com \
+  prometheuses.monitoring.coreos.com \
+  servicemonitors.monitoring.coreos.com \
+  podmonitors.monitoring.coreos.com \
+  thanosrulers.monitoring.coreos.com 2>/dev/null || true
 
 #------------------------------------------------------------------------------
 # Phase 5: Remove Infrastructure
 #------------------------------------------------------------------------------
 echo "🏠 Phase 5: Removing infrastructure components..."
 
-# Remove Nginx Ingress
 echo "  • Uninstalling Nginx Ingress Controller..."
 helm uninstall ingress-nginx -n ingress-nginx 2>/dev/null || true
 
-# Remove ingress namespace
 echo "  • Removing ingress-nginx namespace..."
 kubectl delete namespace ingress-nginx --ignore-not-found=true
 
@@ -86,40 +90,42 @@ kubectl delete namespace ingress-nginx --ignore-not-found=true
 #------------------------------------------------------------------------------
 echo "🔧 Phase 6: Removing access components..."
 
-# Remove OpenLens service account
-echo "  • Removing OpenLens access..."
+echo "  • Removing OpenLens service account..."
 kubectl delete -f openlens.yaml --ignore-not-found=true
+
+echo "  • Removing OpenLens clusterrolebinding..."
+kubectl delete clusterrolebinding openlens-access --ignore-not-found=true
 
 #------------------------------------------------------------------------------
 # Phase 7: Clean Up Remaining Resources
 #------------------------------------------------------------------------------
 echo "🧹 Phase 7: Cleaning up remaining resources..."
 
-# Remove any stuck finalizers (common with monitoring stack)
-echo "  • Checking for stuck resources..."
-
-# Force delete any remaining PVCs
+echo "  • Checking for stuck PVCs..."
 kubectl get pvc --all-namespaces --no-headers 2>/dev/null | while read namespace name rest; do
-    if [[ "$namespace" != "default" && "$namespace" != "kube-system" && "$namespace" != "kube-public" && "$namespace" != "kube-node-lease" ]]; then
-        echo "    - Removing PVC: $namespace/$name"
-        kubectl delete pvc "$name" -n "$namespace" --force --grace-period=0 2>/dev/null || true
-    fi
+  if [[ "$namespace" != "default" && "$namespace" != "kube-system" && "$namespace" != "kube-public" && "$namespace" != "kube-node-lease" ]]; then
+    echo "    - Removing PVC: $namespace/$name"
+    kubectl delete pvc "$name" -n "$namespace" --force --grace-period=0 2>/dev/null || true
+  fi
 done
 
-# Remove any remaining configmaps/secrets from our namespaces
+echo "  • Force deleting remaining namespaces..."
 for ns in snakegame logging kube-prometheus-stack ingress-nginx; do
-    if kubectl get namespace "$ns" >/dev/null 2>&1; then
-        echo "    - Force cleaning namespace: $ns"
-        kubectl delete namespace "$ns" --force --grace-period=0 2>/dev/null || true
-    fi
+  if kubectl get namespace "$ns" >/dev/null 2>&1; then
+    echo "    - Force cleaning namespace: $ns"
+    kubectl delete namespace "$ns" --force --grace-period=0 2>/dev/null || true
+  fi
 done
+
+echo "  • Cleaning Helm cache (optional)..."
+rm -rf ~/.helm 2>/dev/null || true
 
 #------------------------------------------------------------------------------
 # Phase 8: Verification
 #------------------------------------------------------------------------------
+echo ""
 echo "🔍 Phase 8: Verifying cleanup..."
 
-echo ""
 echo "==============================================="
 echo "📊 REMAINING NAMESPACES"
 echo "==============================================="
@@ -141,7 +147,7 @@ echo ""
 echo "==============================================="
 echo "✅ TEARDOWN COMPLETE!"
 echo "==============================================="
-echo "All applications have been removed from the cluster."
+echo "All applications and components have been removed from the cluster."
 echo ""
 echo "📝 Next steps:"
 echo "  • Cluster infrastructure remains running"
