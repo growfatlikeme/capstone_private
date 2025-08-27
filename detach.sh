@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #==============================================================================
-# VPC Dependency Cleanup Script
+# VPC Dependency Cleanup Script (Enhanced)
 # Description: Removes all dependent resources from a specific VPC to allow
 #              Terraform to destroy it cleanly.
 #==============================================================================
@@ -63,10 +63,10 @@ for nat in $NAT_IDS; do
 done
 
 echo "  • Waiting for NAT Gateways to be deleted..."
-sleep 30  # NAT deletion is async; wait before proceeding
+sleep 30
 
 #------------------------------------------------------------------------------
-# Phase 3: Delete Elastic IPs (Scoped to VPC)
+# Phase 3: Release Elastic IPs (Scoped to VPC)
 #------------------------------------------------------------------------------
 echo "⚡ Releasing Elastic IPs attached to VPC: $VPC_ID..."
 
@@ -91,11 +91,40 @@ for entry in $ALLOC_IDS; do
   fi
 done
 
+#------------------------------------------------------------------------------
+# Phase 4: Delete Load Balancers in VPC
+#------------------------------------------------------------------------------
+echo "🧨 Deleting Load Balancers attached to VPC: $VPC_ID..."
+
+# Delete Classic ELBs
+CLB_NAMES=$(aws elb describe-load-balancers \
+  --region $REGION \
+  --query "LoadBalancerDescriptions[?VPCId=='$VPC_ID'].LoadBalancerName" \
+  --output text)
+
+for clb in $CLB_NAMES; do
+  echo "  • Deleting Classic ELB: $clb"
+  aws elb delete-load-balancer --region $REGION --load-balancer-name "$clb"
+done
+
+# Delete ALBs/NLBs (ELBv2)
+ELB_ARNs=$(aws elbv2 describe-load-balancers \
+  --region $REGION \
+  --query "LoadBalancers[?VpcId=='$VPC_ID'].LoadBalancerArn" \
+  --output text)
+
+for elb_arn in $ELB_ARNs; do
+  echo "  • Deleting ELBv2: $elb_arn"
+  aws elbv2 delete-load-balancer --region $REGION --load-balancer-arn "$elb_arn"
+done
+
+echo "  • Waiting for load balancer cleanup..."
+sleep 20
 
 #------------------------------------------------------------------------------
-# Phase 4: Delete ENIs
+# Phase 5: Delete ENIs (Only if detached)
 #------------------------------------------------------------------------------
-echo "🔌 Deleting Elastic Network Interfaces..."
+echo "🔌 Deleting detached Elastic Network Interfaces..."
 ENI_IDS=$(aws ec2 describe-network-interfaces \
   --region $REGION \
   --filters "Name=vpc-id,Values=$VPC_ID" \
@@ -103,12 +132,22 @@ ENI_IDS=$(aws ec2 describe-network-interfaces \
   --output text)
 
 for eni in $ENI_IDS; do
-  echo "  • Deleting ENI: $eni"
-  aws ec2 delete-network-interface --region $REGION --network-interface-id $eni || true
+  STATUS=$(aws ec2 describe-network-interfaces \
+    --region $REGION \
+    --network-interface-ids $eni \
+    --query "NetworkInterfaces[0].Status" \
+    --output text)
+
+  if [[ "$STATUS" == "available" ]]; then
+    echo "  • Deleting ENI: $eni"
+    aws ec2 delete-network-interface --region $REGION --network-interface-id $eni
+  else
+    echo "  • Skipping ENI: $eni (status: $STATUS)"
+  fi
 done
 
 #------------------------------------------------------------------------------
-# Phase 5: Delete Route Tables (non-main)
+# Phase 6: Delete Route Tables (non-main)
 #------------------------------------------------------------------------------
 echo "🛣️ Deleting non-main route tables..."
 ROUTE_TABLE_IDS=$(aws ec2 describe-route-tables \
@@ -117,14 +156,13 @@ ROUTE_TABLE_IDS=$(aws ec2 describe-route-tables \
   --query "RouteTables[?Associations[?Main==\`false\`]].RouteTableId" \
   --output text)
 
-
 for rt in $ROUTE_TABLE_IDS; do
   echo "  • Deleting Route Table: $rt"
   aws ec2 delete-route-table --region $REGION --route-table-id $rt
 done
 
 #------------------------------------------------------------------------------
-# Phase 6: Delete Subnets
+# Phase 7: Delete Subnets
 #------------------------------------------------------------------------------
 echo "📦 Deleting subnets..."
 SUBNET_IDS=$(aws ec2 describe-subnets \
@@ -139,7 +177,7 @@ for subnet in $SUBNET_IDS; do
 done
 
 #------------------------------------------------------------------------------
-# Phase 7: Final Check
+# Phase 8: Final Check
 #------------------------------------------------------------------------------
 echo ""
 echo "✅ VPC dependency cleanup complete!"
