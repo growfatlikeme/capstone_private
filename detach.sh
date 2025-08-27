@@ -114,8 +114,9 @@ echo "🛣️ Deleting non-main route tables..."
 ROUTE_TABLE_IDS=$(aws ec2 describe-route-tables \
   --region $REGION \
   --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query "RouteTables[?Associations[?Main!=`true`]].RouteTableId" \
+  --query "RouteTables[?Associations[?Main==\`false\`]].RouteTableId" \
   --output text)
+
 
 for rt in $ROUTE_TABLE_IDS; do
   echo "  • Deleting Route Table: $rt"
