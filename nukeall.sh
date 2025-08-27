@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #==============================================================================
-# EKS Cluster Teardown Script (Resilient)
+# EKS Cluster Teardown Script (Resilient & Version-Safe)
 # Description: Safely removes all applications, monitoring, logging, and 
 #              infrastructure components from EKS cluster.
 #              Skips kubectl operations if cluster is unreachable.
@@ -20,7 +20,7 @@ echo ""
 # Cluster Connectivity Check
 #------------------------------------------------------------------------------
 echo "🔍 Checking Kubernetes cluster connectivity..."
-if kubectl version --short >/dev/null 2>&1; then
+if kubectl version --client >/dev/null 2>&1 && kubectl cluster-info >/dev/null 2>&1; then
   echo "✅ Kubernetes cluster is reachable."
   SKIP_K8S=false
 else
@@ -34,7 +34,7 @@ fi
 echo "🐍 Phase 1: Removing applications..."
 if [ "$SKIP_K8S" = false ]; then
   echo "  • Removing Snake Game application..."
-  kubectl delete namespace snakegame --ignore-not-found=true
+  kubectl delete namespace snakegame --ignore-not-found
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -44,10 +44,10 @@ fi
 #------------------------------------------------------------------------------
 echo "📝 Phase 2: Removing logging stack..."
 if [ "$SKIP_K8S" = false ]; then
-  helm uninstall promtail -n logging 2>/dev/null || true
-  helm uninstall loki -n logging 2>/dev/null || true
-  kubectl delete -f logging/loki-datasource.yaml --ignore-not-found=true
-  kubectl delete namespace logging --ignore-not-found=true
+  helm uninstall promtail -n logging || true
+  helm uninstall loki -n logging || true
+  kubectl delete -f logging/loki-datasource.yaml --ignore-not-found
+  kubectl delete namespace logging --ignore-not-found
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -57,15 +57,15 @@ fi
 #------------------------------------------------------------------------------
 echo "📈 Phase 3: Removing monitoring stack..."
 if [ "$SKIP_K8S" = false ]; then
-  kubectl delete -f monitoring_cluster/discord-bridge.yaml --ignore-not-found=true
-  kubectl delete -f monitoring_cluster/alertmanager-config.yaml --ignore-not-found=true
-  helm uninstall kube-prometheus-stack -n kube-prometheus-stack 2>/dev/null || true
-  kubectl delete namespace kube-prometheus-stack --ignore-not-found=true
+  kubectl delete -f monitoring_cluster/discord-bridge.yaml --ignore-not-found
+  kubectl delete -f monitoring_cluster/alertmanager-config.yaml --ignore-not-found
+  helm uninstall kube-prometheus-stack -n kube-prometheus-stack || true
+  kubectl delete namespace kube-prometheus-stack --ignore-not-found
   kubectl delete crd alertmanagers.monitoring.coreos.com \
     prometheuses.monitoring.coreos.com \
     servicemonitors.monitoring.coreos.com \
     podmonitors.monitoring.coreos.com \
-    thanosrulers.monitoring.coreos.com 2>/dev/null || true
+    thanosrulers.monitoring.coreos.com || true
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -75,8 +75,8 @@ fi
 #------------------------------------------------------------------------------
 echo "🏠 Phase 4: Removing infrastructure components..."
 if [ "$SKIP_K8S" = false ]; then
-  helm uninstall ingress-nginx -n ingress-nginx 2>/dev/null || true
-  kubectl delete namespace ingress-nginx --ignore-not-found=true
+  helm uninstall ingress-nginx -n ingress-nginx || true
+  kubectl delete namespace ingress-nginx --ignore-not-found
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -86,8 +86,8 @@ fi
 #------------------------------------------------------------------------------
 echo "🔧 Phase 5: Removing access components..."
 if [ "$SKIP_K8S" = false ]; then
-  kubectl delete -f openlens.yaml --ignore-not-found=true
-  kubectl delete clusterrolebinding openlens-access --ignore-not-found=true
+  kubectl delete -f openlens.yaml --ignore-not-found
+  kubectl delete clusterrolebinding openlens-access --ignore-not-found
 else
   echo "  • Skipped — no cluster connection."
 fi
@@ -98,10 +98,10 @@ fi
 echo "🧹 Phase 6: Cleaning up remaining resources..."
 if [ "$SKIP_K8S" = false ]; then
   echo "  • Checking for stuck PVCs..."
-  kubectl get pvc --all-namespaces --no-headers 2>/dev/null | while read namespace name rest; do
+  kubectl get pvc --all-namespaces --no-headers | while read namespace name rest; do
     if [[ "$namespace" != "default" && "$namespace" != "kube-system" && "$namespace" != "kube-public" && "$namespace" != "kube-node-lease" ]]; then
       echo "    - Removing PVC: $namespace/$name"
-      kubectl delete pvc "$name" -n "$namespace" --force --grace-period=0 2>/dev/null || true
+      kubectl delete pvc "$name" -n "$namespace" --force --grace-period=0 || true
     fi
   done
 
@@ -109,7 +109,7 @@ if [ "$SKIP_K8S" = false ]; then
   for ns in snakegame logging kube-prometheus-stack ingress-nginx; do
     if kubectl get namespace "$ns" >/dev/null 2>&1; then
       echo "    - Force cleaning namespace: $ns"
-      kubectl delete namespace "$ns" --force --grace-period=0 2>/dev/null || true
+      kubectl delete namespace "$ns" --force --grace-period=0 || true
     fi
   done
 else
@@ -117,7 +117,7 @@ else
 fi
 
 echo "  • Cleaning Helm cache (optional)..."
-rm -rf ~/.helm 2>/dev/null || true
+rm -rf ~/.helm || true
 
 #------------------------------------------------------------------------------
 # Phase 7: Verification
@@ -128,19 +128,19 @@ if [ "$SKIP_K8S" = false ]; then
   echo "==============================================="
   echo "📊 REMAINING NAMESPACES"
   echo "==============================================="
-  kubectl get namespaces
+  kubectl get namespaces || echo "⚠️ Unable to list namespaces."
 
   echo ""
   echo "==============================================="
   echo "🎯 REMAINING HELM RELEASES"
   echo "==============================================="
-  helm list --all-namespaces
+  helm list --all-namespaces || echo "⚠️ Unable to list Helm releases."
 
   echo ""
   echo "==============================================="
   echo "⚡ REMAINING LOADBALANCER SERVICES"
   echo "==============================================="
-  kubectl get svc --all-namespaces --field-selector spec.type=LoadBalancer
+  kubectl get svc --all-namespaces --field-selector spec.type=LoadBalancer || echo "⚠️ Unable to list LoadBalancer services."
 else
   echo "  • Skipped — no cluster connection."
 fi
