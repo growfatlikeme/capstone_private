@@ -36,7 +36,11 @@ jobs:
           cat ${{ env.KUBECONFIG }}
 
       - name: 🔍 Verify kubectl connectivity
-        run: kubectl version --short
+        run: |
+          echo "🔧 kubectl client version:"
+          kubectl version --client
+          echo "🔧 Checking cluster access:"
+          kubectl cluster-info || echo "⚠️ Cluster unreachable or not configured."
 
       - name: 💣 Make nukeall.sh executable and run
         run: |
