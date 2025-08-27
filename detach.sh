@@ -66,19 +66,31 @@ echo "  • Waiting for NAT Gateways to be deleted..."
 sleep 30  # NAT deletion is async; wait before proceeding
 
 #------------------------------------------------------------------------------
-# Phase 3: Delete Elastic IPs
+# Phase 3: Delete Elastic IPs (Scoped to VPC)
 #------------------------------------------------------------------------------
-echo "⚡ Releasing Elastic IPs..."
+echo "⚡ Releasing Elastic IPs attached to VPC: $VPC_ID..."
+
 ALLOC_IDS=$(aws ec2 describe-addresses \
   --region $REGION \
-  --filters "Name=domain,Values=vpc" \
-  --query "Addresses[].AllocationId" \
-  --output text)
+  --query "Addresses[?NetworkInterfaceId!=null].{AllocId:AllocationId,ENI:NetworkInterfaceId}" \
+  --output json | jq -r '.[] | "\(.AllocId) \(.ENI)"')
 
-for alloc in $ALLOC_IDS; do
-  echo "  • Releasing EIP: $alloc"
-  aws ec2 release-address --region $REGION --allocation-id $alloc
+for entry in $ALLOC_IDS; do
+  ALLOC_ID=$(echo $entry | awk '{print $1}')
+  ENI_ID=$(echo $entry | awk '{print $2}')
+
+  ENI_VPC_ID=$(aws ec2 describe-network-interfaces \
+    --region $REGION \
+    --network-interface-ids $ENI_ID \
+    --query "NetworkInterfaces[0].VpcId" \
+    --output text)
+
+  if [[ "$ENI_VPC_ID" == "$VPC_ID" ]]; then
+    echo "  • Releasing EIP: $ALLOC_ID (attached to ENI: $ENI_ID)"
+    aws ec2 release-address --region $REGION --allocation-id $ALLOC_ID
+  fi
 done
+
 
 #------------------------------------------------------------------------------
 # Phase 4: Delete ENIs
