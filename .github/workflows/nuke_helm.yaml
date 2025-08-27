@@ -24,6 +24,9 @@ jobs:
       - name: List files
         run: ls -R
 
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name growfattest-cluster --region ap-southeast-1
+
       - name: Make nukeall.sh executable and run
         run: |
           chmod +x nukeall.sh

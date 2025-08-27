@@ -31,9 +31,6 @@ jobs:
         working-directory: terraform
         run: terraform init
 
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name growfattest-cluster --region ap-southeast-1
-
       - name: Make detach.sh executable and run #force detach existing resources before teardown
         run: |
           chmod +x detach.sh
