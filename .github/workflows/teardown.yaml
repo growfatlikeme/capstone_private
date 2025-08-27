@@ -31,6 +31,11 @@ jobs:
         working-directory: terraform
         run: terraform init
 
+      - name: Make detach.sh executable and run #force detach existing resources before teardown
+        run: |
+          chmod +x detach.sh
+          ./detach.sh
+
       - name: Terraform Destroy
         working-directory: terraform
         run: terraform destroy --auto-approve
