@@ -25,9 +25,11 @@ jobs:
         run: ls -R
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name growfattest-cluster --region ap-southeast-1
+        run: aws eks update-kubeconfig --name growfattest-cluster --region ap-southeast-1 --kubeconfig ${{ github.workspace }}/kubeconfig
 
       - name: Make nukeall.sh executable and run
         run: |
           chmod +x nukeall.sh
           ./nukeall.sh
+        env:
+          KUBECONFIG: ${{ github.workspace }}/kubeconfig
