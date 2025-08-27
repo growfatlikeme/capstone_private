@@ -1,18 +1,16 @@
 #!/bin/bash
 
 #==============================================================================
-# VPC Dependency Cleanup Script (Full)
+# VPC Dependency Cleanup Script (Resilient)
 # Description: Removes all dependent resources from a specific VPC to allow
-#              Terraform to destroy it cleanly.
+#              Terraform to destroy it cleanly. Skips DependencyViolation errors.
 #==============================================================================
-
-set -e
 
 #------------------------------------------------------------------------------
 # Configuration
 #------------------------------------------------------------------------------
 REGION="ap-southeast-1"
-VPC_NAME="growfattest_vpc"  # Replace with your VPC Name tag
+VPC_NAME="growfattest_vpc"
 
 echo "🔍 Resolving VPC ID for VPC named: $VPC_NAME..."
 VPC_ID=$(aws ec2 describe-vpcs \
@@ -48,7 +46,7 @@ else
 fi
 
 #------------------------------------------------------------------------------
-# Phase 2: Delete Load Balancers in VPC
+# Phase 2: Delete Load Balancers
 #------------------------------------------------------------------------------
 echo "🧨 Deleting Load Balancers attached to VPC: $VPC_ID..."
 
@@ -59,7 +57,7 @@ CLB_NAMES=$(aws elb describe-load-balancers \
 
 for clb in $CLB_NAMES; do
   echo "  • Deleting Classic ELB: $clb"
-  aws elb delete-load-balancer --region $REGION --load-balancer-name "$clb"
+  aws elb delete-load-balancer --region $REGION --load-balancer-name "$clb" || echo "    ⚠️ Could not delete Classic ELB: $clb"
 done
 
 ELB_ARNs=$(aws elbv2 describe-load-balancers \
@@ -69,11 +67,11 @@ ELB_ARNs=$(aws elbv2 describe-load-balancers \
 
 for elb_arn in $ELB_ARNs; do
   echo "  • Deleting ELBv2: $elb_arn"
-  aws elbv2 delete-load-balancer --region $REGION --load-balancer-arn "$elb_arn"
+  aws elbv2 delete-load-balancer --region $REGION --load-balancer-arn "$elb_arn" || echo "    ⚠️ Could not delete ELBv2: $elb_arn"
 done
 
 echo "  • Waiting for load balancer cleanup..."
-sleep 20
+sleep 30
 
 #------------------------------------------------------------------------------
 # Phase 3: Delete NAT Gateways
@@ -87,14 +85,14 @@ NAT_IDS=$(aws ec2 describe-nat-gateways \
 
 for nat in $NAT_IDS; do
   echo "  • Deleting NAT Gateway: $nat"
-  aws ec2 delete-nat-gateway --region $REGION --nat-gateway-id $nat
+  aws ec2 delete-nat-gateway --region $REGION --nat-gateway-id $nat || echo "    ⚠️ Could not delete NAT Gateway: $nat"
 done
 
 echo "  • Waiting for NAT Gateways to be deleted..."
 sleep 30
 
 #------------------------------------------------------------------------------
-# Phase 4: Release Elastic IPs (Scoped to VPC)
+# Phase 4: Release Elastic IPs
 #------------------------------------------------------------------------------
 echo "⚡ Releasing Elastic IPs attached to VPC: $VPC_ID..."
 
@@ -107,13 +105,11 @@ echo "$ALLOCATIONS" | jq -c '.[]' | while read -r entry; do
   ALLOC_ID=$(echo "$entry" | jq -r '.AllocId')
   ENI_ID=$(echo "$entry" | jq -r '.ENI')
 
-  # Skip if allocation ID is null or empty
   if [[ -z "$ALLOC_ID" || "$ALLOC_ID" == "null" ]]; then
     echo "  • Skipping — no valid allocation ID for ENI: $ENI_ID"
     continue
   fi
 
-  # Check if ENI belongs to target VPC
   ENI_VPC_ID=$(aws ec2 describe-network-interfaces \
     --region $REGION \
     --network-interface-ids "$ENI_ID" \
@@ -129,10 +125,8 @@ echo "$ALLOCATIONS" | jq -c '.[]' | while read -r entry; do
   fi
 done
 
-
-
 #------------------------------------------------------------------------------
-# Phase 6: Delete Security Groups (non-default)
+# Phase 5: Delete Security Groups
 #------------------------------------------------------------------------------
 echo "🛡️ Deleting non-default security groups in VPC: $VPC_ID..."
 
@@ -144,11 +138,13 @@ SG_IDS=$(aws ec2 describe-security-groups \
 
 for sg in $SG_IDS; do
   echo "  • Deleting Security Group: $sg"
-  aws ec2 delete-security-group --region $REGION --group-id "$sg" || echo "    ⚠️ Could not delete $sg (may be in use)"
+  aws ec2 delete-security-group --region $REGION --group-id "$sg" 2>&1 | tee /tmp/sg_delete.log | grep -q "DependencyViolation" \
+    && echo "    ⚠️ Skipped $sg due to dependency" \
+    || echo "    ✅ Attempted deletion of $sg"
 done
 
 #------------------------------------------------------------------------------
-# Phase 7: Delete Route Tables (non-main)
+# Phase 6: Delete Route Tables
 #------------------------------------------------------------------------------
 echo "🛣️ Deleting non-main route tables..."
 ROUTE_TABLE_IDS=$(aws ec2 describe-route-tables \
@@ -159,11 +155,13 @@ ROUTE_TABLE_IDS=$(aws ec2 describe-route-tables \
 
 for rt in $ROUTE_TABLE_IDS; do
   echo "  • Deleting Route Table: $rt"
-  aws ec2 delete-route-table --region $REGION --route-table-id $rt
+  aws ec2 delete-route-table --region $REGION --route-table-id $rt 2>&1 | tee /tmp/rt_delete.log | grep -q "DependencyViolation" \
+    && echo "    ⚠️ Skipped $rt due to dependency" \
+    || echo "    ✅ Attempted deletion of $rt"
 done
 
 #------------------------------------------------------------------------------
-# Phase 8: Delete Subnets
+# Phase 7: Delete Subnets
 #------------------------------------------------------------------------------
 echo "📦 Deleting subnets..."
 SUBNET_IDS=$(aws ec2 describe-subnets \
@@ -174,11 +172,13 @@ SUBNET_IDS=$(aws ec2 describe-subnets \
 
 for subnet in $SUBNET_IDS; do
   echo "  • Deleting Subnet: $subnet"
-  aws ec2 delete-subnet --region $REGION --subnet-id $subnet
+  aws ec2 delete-subnet --region $REGION --subnet-id $subnet 2>&1 | tee /tmp/subnet_delete.log | grep -q "DependencyViolation" \
+    && echo "    ⚠️ Skipped $subnet due to dependency" \
+    || echo "    ✅ Attempted deletion of $subnet"
 done
 
 #------------------------------------------------------------------------------
-# Phase 9: Final Check
+# Final Check
 #------------------------------------------------------------------------------
 echo ""
 echo "✅ VPC dependency cleanup complete!"
