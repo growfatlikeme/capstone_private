@@ -98,26 +98,37 @@ sleep 30
 #------------------------------------------------------------------------------
 echo "⚡ Releasing Elastic IPs attached to VPC: $VPC_ID..."
 
-ALLOC_IDS=$(aws ec2 describe-addresses \
+ALLOCATIONS=$(aws ec2 describe-addresses \
   --region $REGION \
   --query "Addresses[?NetworkInterfaceId!=null].{AllocId:AllocationId,ENI:NetworkInterfaceId}" \
-  --output json | jq -r '.[] | "\(.AllocId) \(.ENI)"')
+  --output json)
 
-for entry in $ALLOC_IDS; do
-  ALLOC_ID=$(echo $entry | awk '{print $1}')
-  ENI_ID=$(echo $entry | awk '{print $2}')
+echo "$ALLOCATIONS" | jq -c '.[]' | while read -r entry; do
+  ALLOC_ID=$(echo "$entry" | jq -r '.AllocId')
+  ENI_ID=$(echo "$entry" | jq -r '.ENI')
 
+  # Skip if allocation ID is null or empty
+  if [[ -z "$ALLOC_ID" || "$ALLOC_ID" == "null" ]]; then
+    echo "  • Skipping — no valid allocation ID for ENI: $ENI_ID"
+    continue
+  fi
+
+  # Check if ENI belongs to target VPC
   ENI_VPC_ID=$(aws ec2 describe-network-interfaces \
     --region $REGION \
-    --network-interface-ids $ENI_ID \
+    --network-interface-ids "$ENI_ID" \
     --query "NetworkInterfaces[0].VpcId" \
-    --output text)
+    --output text 2>/dev/null)
 
   if [[ "$ENI_VPC_ID" == "$VPC_ID" ]]; then
     echo "  • Releasing EIP: $ALLOC_ID (attached to ENI: $ENI_ID)"
-    aws ec2 release-address --region $REGION --allocation-id $ALLOC_ID
+    aws ec2 release-address --region $REGION --allocation-id "$ALLOC_ID" \
+      || echo "    ⚠️ Failed to release EIP: $ALLOC_ID — may not exist or already released"
+  else
+    echo "  • Skipping EIP: $ALLOC_ID — ENI not in target VPC"
   fi
 done
+
 
 
 #------------------------------------------------------------------------------
