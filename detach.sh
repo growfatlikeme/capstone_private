@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #==============================================================================
-# VPC Dependency Cleanup Script (Optimized)
+# VPC Dependency Cleanup Script (Full)
 # Description: Removes all dependent resources from a specific VPC to allow
 #              Terraform to destroy it cleanly.
 #==============================================================================
@@ -52,7 +52,6 @@ fi
 #------------------------------------------------------------------------------
 echo "🧨 Deleting Load Balancers attached to VPC: $VPC_ID..."
 
-# Delete Classic ELBs
 CLB_NAMES=$(aws elb describe-load-balancers \
   --region $REGION \
   --query "LoadBalancerDescriptions[?VPCId=='$VPC_ID'].LoadBalancerName" \
@@ -63,7 +62,6 @@ for clb in $CLB_NAMES; do
   aws elb delete-load-balancer --region $REGION --load-balancer-name "$clb"
 done
 
-# Delete ALBs/NLBs (ELBv2)
 ELB_ARNs=$(aws elbv2 describe-load-balancers \
   --region $REGION \
   --query "LoadBalancers[?VpcId=='$VPC_ID'].LoadBalancerArn" \
@@ -147,7 +145,23 @@ for eni in $ENI_IDS; do
 done
 
 #------------------------------------------------------------------------------
-# Phase 6: Delete Route Tables (non-main)
+# Phase 6: Delete Security Groups (non-default)
+#------------------------------------------------------------------------------
+echo "🛡️ Deleting non-default security groups in VPC: $VPC_ID..."
+
+SG_IDS=$(aws ec2 describe-security-groups \
+  --region $REGION \
+  --filters "Name=vpc-id,Values=$VPC_ID" \
+  --query "SecurityGroups[?GroupName!='default'].GroupId" \
+  --output text)
+
+for sg in $SG_IDS; do
+  echo "  • Deleting Security Group: $sg"
+  aws ec2 delete-security-group --region $REGION --group-id "$sg" || echo "    ⚠️ Could not delete $sg (may be in use)"
+done
+
+#------------------------------------------------------------------------------
+# Phase 7: Delete Route Tables (non-main)
 #------------------------------------------------------------------------------
 echo "🛣️ Deleting non-main route tables..."
 ROUTE_TABLE_IDS=$(aws ec2 describe-route-tables \
@@ -162,7 +176,7 @@ for rt in $ROUTE_TABLE_IDS; do
 done
 
 #------------------------------------------------------------------------------
-# Phase 7: Delete Subnets
+# Phase 8: Delete Subnets
 #------------------------------------------------------------------------------
 echo "📦 Deleting subnets..."
 SUBNET_IDS=$(aws ec2 describe-subnets \
@@ -177,7 +191,7 @@ for subnet in $SUBNET_IDS; do
 done
 
 #------------------------------------------------------------------------------
-# Phase 8: Final Check
+# Phase 9: Final Check
 #------------------------------------------------------------------------------
 echo ""
 echo "✅ VPC dependency cleanup complete!"
