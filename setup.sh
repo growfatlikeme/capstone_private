@@ -47,6 +47,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --create-namespace \
   --set controller.service.type=LoadBalancer
 
+# Install KEDA
 echo "  • Installing KEDA..."
 helm install keda kedacore/keda --namespace keda --create-namespace
 
@@ -111,6 +112,7 @@ kubectl create namespace snakegame --dry-run=client -o yaml | kubectl apply -f -
 echo "  • Deploying Snake Game frontend..."
 kubectl apply -f snakegame/snakegame.yaml
 kubectl apply -f snakegame/ingress.yaml
+kubectl apply -f snakegame/scaledobject.yaml
 
 #------------------------------------------------------------------------------
 # Phase 6: Access Information
