@@ -37,6 +37,7 @@ echo "  • Adding Helm repositories..."
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts 2>/dev/null || true
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx 2>/dev/null || true
 helm repo add grafana https://grafana.github.io/helm-charts 2>/dev/null || true
+helm repo add kedacore https://kedacore.github.io/charts 2>/dev/null || true
 helm repo update
 
 # Install Nginx Ingress Controller
@@ -45,6 +46,9 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --set controller.service.type=LoadBalancer
+
+echo "  • Installing KEDA..."
+helm install keda kedacore/keda --namespace keda --create-namespace
 
 #------------------------------------------------------------------------------
 # Phase 3: Monitoring Stack

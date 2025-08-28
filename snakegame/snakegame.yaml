@@ -43,8 +43,8 @@ data:
       clusters:
         - name: snake_service
           connect_timeout: 0.25s
-          type: logical_dns
-          lb_policy: round_robin
+          type: STRICT_DNS
+          lb_policy: ROUND_ROBIN
           load_assignment:
             cluster_name: snake_service
             endpoints:
@@ -52,8 +52,8 @@ data:
                   - endpoint:
                       address:
                         socket_address:
-                          address: 127.0.0.1
-                          port_value: 80   # App's actual listen port
+                          address: snake-frontend-service.snakegame.svc.cluster.local
+                          port_value: 80
     admin:
       access_log_path: "/dev/null"
       address:
@@ -96,7 +96,7 @@ metadata:
   name: snake-frontend
   namespace: snakegame
 spec:
-  replicas: 2
+  replicas: 4
   selector:
     matchLabels:
       app: snake-frontend
