@@ -1,5 +1,10 @@
 deploymentMode: SingleBinary
 
+gateway:
+  enabled: true
+  service:
+    port: 3100
+
 loki:
   auth_enabled: false
   commonConfig:
@@ -14,7 +19,7 @@ loki:
           prefix: index_
           period: 24h
   storage:
-    type: 's3'
+    type: "s3"
     bucketNames:
       chunks: growfattest-logging
       ruler: growfattest-logging

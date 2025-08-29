@@ -1,186 +1,86 @@
-#!/bin/bash
-
-#==============================================================================
-# VPC Dependency Cleanup Script (Resilient)
-# Description: Removes all dependent resources from a specific VPC to allow
-#              Terraform to destroy it cleanly. Skips DependencyViolation errors.
-#==============================================================================
-
-#------------------------------------------------------------------------------
-# Configuration
-#------------------------------------------------------------------------------
-REGION="ap-southeast-1"
-VPC_NAME="growfattest_vpc"
-
-echo "🔍 Resolving VPC ID for VPC named: $VPC_NAME..."
-VPC_ID=$(aws ec2 describe-vpcs \
-  --region $REGION \
-  --filters "Name=tag:Name,Values=$VPC_NAME" \
-  --query "Vpcs[0].VpcId" \
-  --output text)
-
-if [[ "$VPC_ID" == "None" || -z "$VPC_ID" ]]; then
-  echo "❌ VPC with name '$VPC_NAME' not found in region $REGION."
-  exit 1
-fi
-
-echo "🧹 Starting cleanup for VPC: $VPC_ID"
+echo "🐳 Starting Kubernetes teardown (EKS Monitoring Stack)..."
 echo "==============================================="
 
 #------------------------------------------------------------------------------
-# Phase 1: Terminate EC2 Instances
+# Cluster Connectivity Check
 #------------------------------------------------------------------------------
-echo "🔻 Terminating EC2 instances in VPC..."
-INSTANCE_IDS=$(aws ec2 describe-instances \
-  --region $REGION \
-  --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query "Reservations[].Instances[].InstanceId" \
-  --output text)
-
-if [ -n "$INSTANCE_IDS" ]; then
-  aws ec2 terminate-instances --region $REGION --instance-ids $INSTANCE_IDS
-  echo "  • Waiting for instances to terminate..."
-  aws ec2 wait instance-terminated --region $REGION --instance-ids $INSTANCE_IDS
+echo "🔍 Checking Kubernetes cluster connectivity..."
+if kubectl version --client >/dev/null 2>&1 && kubectl cluster-info >/dev/null 2>&1; then
+  echo "✅ Kubernetes cluster is reachable."
+  SKIP_K8S=false
 else
-  echo "  • No EC2 instances found."
+  echo "⚠️ Kubernetes cluster not reachable. Skipping all kubectl operations."
+  SKIP_K8S=true
 fi
 
 #------------------------------------------------------------------------------
-# Phase 2: Delete Load Balancers
+# Phase A: Snake Game Application
 #------------------------------------------------------------------------------
-echo "🧨 Deleting Load Balancers attached to VPC: $VPC_ID..."
-
-CLB_NAMES=$(aws elb describe-load-balancers \
-  --region $REGION \
-  --query "LoadBalancerDescriptions[?VPCId=='$VPC_ID'].LoadBalancerName" \
-  --output text)
-
-for clb in $CLB_NAMES; do
-  echo "  • Deleting Classic ELB: $clb"
-  aws elb delete-load-balancer --region $REGION --load-balancer-name "$clb" || echo "    ⚠️ Could not delete Classic ELB: $clb"
-done
-
-ELB_ARNs=$(aws elbv2 describe-load-balancers \
-  --region $REGION \
-  --query "LoadBalancers[?VpcId=='$VPC_ID'].LoadBalancerArn" \
-  --output text)
-
-for elb_arn in $ELB_ARNs; do
-  echo "  • Deleting ELBv2: $elb_arn"
-  aws elbv2 delete-load-balancer --region $REGION --load-balancer-arn "$elb_arn" || echo "    ⚠️ Could not delete ELBv2: $elb_arn"
-done
-
-echo "  • Waiting for load balancer cleanup..."
-sleep 30
+echo "🐍 Removing Snake Game application..."
+if [ "$SKIP_K8S" = false ]; then
+  kubectl delete namespace snakegame --ignore-not-found || echo "⚠️ Failed to delete namespace: snakegame"
+else
+  echo "  • Skipped — no cluster connection."
+fi
 
 #------------------------------------------------------------------------------
-# Phase 3: Delete NAT Gateways
+# Phase B: Logging Stack
 #------------------------------------------------------------------------------
-echo "🌐 Deleting NAT Gateways..."
-NAT_IDS=$(aws ec2 describe-nat-gateways \
-  --region $REGION \
-  --filter "Name=vpc-id,Values=$VPC_ID" \
-  --query "NatGateways[].NatGatewayId" \
-  --output text)
-
-for nat in $NAT_IDS; do
-  echo "  • Deleting NAT Gateway: $nat"
-  aws ec2 delete-nat-gateway --region $REGION --nat-gateway-id $nat || echo "    ⚠️ Could not delete NAT Gateway: $nat"
-done
-
-echo "  • Waiting for NAT Gateways to be deleted..."
-sleep 30
+echo "📝 Removing logging stack..."
+if [ "$SKIP_K8S" = false ]; then
+  helm uninstall promtail -n logging || echo "⚠️ Failed to uninstall promtail"
+  helm uninstall loki -n logging || echo "⚠️ Failed to uninstall loki"
+  kubectl delete namespace logging --ignore-not-found || echo "⚠️ Failed to delete namespace: logging"
+else
+  echo "  • Skipped — no cluster connection."
+fi
 
 #------------------------------------------------------------------------------
-# Phase 4: Release Elastic IPs
+# Phase C: Monitoring Stack
 #------------------------------------------------------------------------------
-echo "⚡ Releasing Elastic IPs attached to VPC: $VPC_ID..."
-
-ALLOCATIONS=$(aws ec2 describe-addresses \
-  --region $REGION \
-  --query "Addresses[?NetworkInterfaceId!=null].{AllocId:AllocationId,ENI:NetworkInterfaceId}" \
-  --output json)
-
-echo "$ALLOCATIONS" | jq -c '.[]' | while read -r entry; do
-  ALLOC_ID=$(echo "$entry" | jq -r '.AllocId')
-  ENI_ID=$(echo "$entry" | jq -r '.ENI')
-
-  if [[ -z "$ALLOC_ID" || "$ALLOC_ID" == "null" ]]; then
-    echo "  • Skipping — no valid allocation ID for ENI: $ENI_ID"
-    continue
-  fi
-
-  ENI_VPC_ID=$(aws ec2 describe-network-interfaces \
-    --region $REGION \
-    --network-interface-ids "$ENI_ID" \
-    --query "NetworkInterfaces[0].VpcId" \
-    --output text 2>/dev/null)
-
-  if [[ "$ENI_VPC_ID" == "$VPC_ID" ]]; then
-    echo "  • Releasing EIP: $ALLOC_ID (attached to ENI: $ENI_ID)"
-    aws ec2 release-address --region $REGION --allocation-id "$ALLOC_ID" \
-      || echo "    ⚠️ Failed to release EIP: $ALLOC_ID — may not exist or already released"
-  else
-    echo "  • Skipping EIP: $ALLOC_ID — ENI not in target VPC"
-  fi
-done
+echo "📈 Removing monitoring stack..."
+if [ "$SKIP_K8S" = false ]; then
+  kubectl delete -f monitoring_cluster/discord-bridge.yaml --ignore-not-found || echo "⚠️ Failed to delete Discord bridge"
+  helm uninstall kube-prometheus-stack -n kube-prometheus-stack || echo "⚠️ Failed to uninstall Prometheus stack"
+  kubectl delete namespace kube-prometheus-stack --ignore-not-found || echo "⚠️ Failed to delete namespace: kube-prometheus-stack"
+else
+  echo "  • Skipped — no cluster connection."
+fi
 
 #------------------------------------------------------------------------------
-# Phase 5: Delete Security Groups
+# Phase D: Infrastructure Components
 #------------------------------------------------------------------------------
-echo "🛡️ Deleting non-default security groups in VPC: $VPC_ID..."
-
-SG_IDS=$(aws ec2 describe-security-groups \
-  --region $REGION \
-  --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query "SecurityGroups[?GroupName!='default'].GroupId" \
-  --output text)
-
-for sg in $SG_IDS; do
-  echo "  • Deleting Security Group: $sg"
-  aws ec2 delete-security-group --region $REGION --group-id "$sg" 2>&1 | tee /tmp/sg_delete.log | grep -q "DependencyViolation" \
-    && echo "    ⚠️ Skipped $sg due to dependency" \
-    || echo "    ✅ Attempted deletion of $sg"
-done
+echo "🏠 Removing infrastructure components..."
+if [ "$SKIP_K8S" = false ]; then
+  helm uninstall ingress-nginx -n ingress-nginx || echo "⚠️ Failed to uninstall ingress-nginx"
+  kubectl delete namespace ingress-nginx --ignore-not-found || echo "⚠️ Failed to delete namespace: ingress-nginx"
+else
+  echo "  • Skipped — no cluster connection."
+fi
 
 #------------------------------------------------------------------------------
-# Phase 6: Delete Route Tables
+# Phase E: KEDA Autoscaler
 #------------------------------------------------------------------------------
-echo "🛣️ Deleting non-main route tables..."
-ROUTE_TABLE_IDS=$(aws ec2 describe-route-tables \
-  --region $REGION \
-  --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query "RouteTables[?Associations[?Main==\`false\`]].RouteTableId" \
-  --output text)
-
-for rt in $ROUTE_TABLE_IDS; do
-  echo "  • Deleting Route Table: $rt"
-  aws ec2 delete-route-table --region $REGION --route-table-id $rt 2>&1 | tee /tmp/rt_delete.log | grep -q "DependencyViolation" \
-    && echo "    ⚠️ Skipped $rt due to dependency" \
-    || echo "    ✅ Attempted deletion of $rt"
-done
+echo "📦 Removing KEDA autoscaler..."
+if [ "$SKIP_K8S" = false ]; then
+  helm uninstall keda -n keda || echo "⚠️ Helm uninstall failed — trying manifest cleanup"
+  kubectl delete -f keda/keda.yaml --ignore-not-found || echo "⚠️ Failed to delete KEDA manifest"
+  kubectl delete namespace keda --ignore-not-found || echo "⚠️ Failed to delete namespace: keda"
+else
+  echo "  • Skipped — no cluster connection."
+fi
 
 #------------------------------------------------------------------------------
-# Phase 7: Delete Subnets
+# Phase F: OpenLens Access
 #------------------------------------------------------------------------------
-echo "📦 Deleting subnets..."
-SUBNET_IDS=$(aws ec2 describe-subnets \
-  --region $REGION \
-  --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query "Subnets[].SubnetId" \
-  --output text)
+echo "🔐 Removing OpenLens access..."
+if [ "$SKIP_K8S" = false ]; then
+  kubectl delete -f openlens.yaml --ignore-not-found || echo "⚠️ Failed to delete OpenLens manifest"
+  kubectl delete clusterrolebinding openlens-access --ignore-not-found || echo "⚠️ Failed to delete OpenLens clusterrolebinding"
+else
+  echo "  • Skipped — no cluster connection."
+fi
 
-for subnet in $SUBNET_IDS; do
-  echo "  • Deleting Subnet: $subnet"
-  aws ec2 delete-subnet --region $REGION --subnet-id $subnet 2>&1 | tee /tmp/subnet_delete.log | grep -q "DependencyViolation" \
-    && echo "    ⚠️ Skipped $subnet due to dependency" \
-    || echo "    ✅ Attempted deletion of $subnet"
-done
-
-#------------------------------------------------------------------------------
-# Final Check
-#------------------------------------------------------------------------------
 echo ""
-echo "✅ VPC dependency cleanup complete!"
-echo "You can now safely run: terraform destroy"
-echo ""
+echo "✅ Kubernetes teardown complete!"
+echo "==============================================="
