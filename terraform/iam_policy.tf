@@ -42,7 +42,7 @@ module "external_dns_role" {
   count = var.enable_external_dns ? 1 : 0
 
   create_role                    = true
-  role_name                      = "${locals.prefix}-externaldns-oidc-role"
+  role_name                      = "${local.name_prefix}-externaldns-oidc-role"
   provider_url                   = module.eks.oidc_provider
   oidc_fully_qualified_audiences = ["sts.amazonaws.com"]
 
