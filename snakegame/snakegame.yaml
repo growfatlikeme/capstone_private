@@ -82,3 +82,108 @@ data:
         socket_address:
           address: 0.0.0.0
           port_value: 9901
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snake-frontend-service
+  namespace: snakegame
+spec:
+  type: LoadBalancer
+  selector:
+    app: snake-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: snake-frontend-headless
+  namespace: snakegame
+spec:
+  clusterIP: None
+  selector:
+    app: snake-frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy-metrics
+  namespace: snakegame
+  labels:
+    app: snake-frontend
+spec:
+  selector:
+    app: snake-frontend
+  ports:
+    - name: admin
+      port: 9901
+      targetPort: 9901
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: snake-frontend
+  namespace: snakegame
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: snake-frontend
+  template:
+    metadata:
+      labels:
+        app: snake-frontend
+    spec:
+      containers:
+        - name: envoy
+          image: envoyproxy/envoy:v1.27.0
+          args:
+            - -c
+            - /etc/envoy/envoy.yaml
+            - --service-cluster
+            - snake-frontend
+          ports:
+            - containerPort: 8080
+            - containerPort: 9901
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /etc/envoy
+        - name: snake-frontend
+          image: hannamatheos/snake-frontend:latest
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+      volumes:
+        - name: envoy-config
+          configMap:
+            name: envoy-config
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: envoy-snake-monitor
+  namespace: snakegame
+  labels:
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: snake-frontend
+  namespaceSelector:
+    matchNames:
+      - snakegame
+  endpoints:
+    - port: admin
+      path: /stats/prometheus
+      interval: 15s
