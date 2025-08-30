@@ -62,3 +62,11 @@ chunksCache:
   enabled: false
 resultsCache:
   enabled: false
+
+lokiCanary:
+  enabled: true
+  interval: 10s
+  lokiAddress: http://loki-gateway.logging.svc.cluster.local:3100
+  labels:
+    job: "loki-canary"
+    service: "loki-canary"

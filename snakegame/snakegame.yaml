@@ -18,6 +18,13 @@ data:
                   typed_config:
                     "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                     stat_prefix: ingress_http
+                    generate_request_id: true
+                    tracing:
+                      operation_name: ingress
+                    request_id_extension:
+                      typed_config:
+                        "@type": type.googleapis.com/envoy.extensions.request_id.uuid.v3.UuidRequestIdConfig
+                        use_request_id_for_trace_sampling: true
                     route_config:
                       name: local_route
                       virtual_hosts:
@@ -34,15 +41,32 @@ data:
                                 prefix: "/"
                               route:
                                 cluster: snake_service
+                                timeout: 5s
+                                retry_policy:
+                                  retry_on: connect-failure,refused-stream,503
+                                  num_retries: 3
+                                  per_try_timeout: 2s
                     http_filters:
                       - name: envoy.filters.http.router
                         typed_config:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
       clusters:
         - name: snake_service
-          connect_timeout: 0.25s
+          connect_timeout: 1s
           type: STRICT_DNS
           lb_policy: ROUND_ROBIN
+          circuit_breakers:
+            thresholds:
+              - priority: DEFAULT
+                max_connections: 100
+                max_pending_requests: 100
+                max_requests: 500
+                max_retries: 3
+          outlier_detection:
+            consecutive_5xx: 3
+            interval: 10s
+            base_ejection_time: 30s
+            max_ejection_percent: 50
           load_assignment:
             cluster_name: snake_service
             endpoints:
@@ -58,101 +82,3 @@ data:
         socket_address:
           address: 0.0.0.0
           port_value: 9901
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: snake-frontend-service
-  namespace: snakegame
-spec:
-  type: LoadBalancer
-  selector:
-    app: snake-frontend
-  ports:
-    - name: http
-      port: 80
-      targetPort: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: snake-frontend-headless
-  namespace: snakegame
-spec:
-  clusterIP: None
-  selector:
-    app: snake-frontend
-  ports:
-    - name: http
-      port: 80
-      targetPort: 8080
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: envoy-metrics
-  namespace: snakegame
-  labels:
-    app: snake-frontend
-spec:
-  selector:
-    app: snake-frontend
-  ports:
-    - name: admin
-      port: 9901
-      targetPort: 9901
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: snake-frontend
-  namespace: snakegame
-spec:
-  replicas: 4
-  selector:
-    matchLabels:
-      app: snake-frontend
-  template:
-    metadata:
-      labels:
-        app: snake-frontend
-    spec:
-      containers:
-        - name: envoy
-          image: envoyproxy/envoy:v1.27.0
-          args:
-            - -c
-            - /etc/envoy/envoy.yaml
-            - --service-cluster
-            - snake-frontend
-          ports:
-            - containerPort: 8080
-            - containerPort: 9901
-          volumeMounts:
-            - name: envoy-config
-              mountPath: /etc/envoy
-        - name: snake-frontend
-          image: hannamatheos/snake-frontend:latest
-      volumes:
-        - name: envoy-config
-          configMap:
-            name: envoy-config
----
-apiVersion: monitoring.coreos.com/v1
-kind: ServiceMonitor
-metadata:
-  name: envoy-snake-monitor
-  namespace: snakegame
-  labels:
-    release: kube-prometheus-stack
-spec:
-  selector:
-    matchLabels:
-      app: snake-frontend
-  namespaceSelector:
-    matchNames:
-      - snakegame
-  endpoints:
-    - port: admin
-      path: /stats/prometheus
-      interval: 15s
