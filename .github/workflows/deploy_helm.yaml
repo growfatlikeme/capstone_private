@@ -3,6 +3,11 @@ run-name: Deploying Helm by ${{ github.actor }}
 
 on:
   workflow_dispatch:
+    inputs:
+      refToBuild:
+        description: "Branch, tag or commit SHA to build"
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -12,8 +17,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ inputs.refToBuild }}
+
+      - name: Build
+        run: echo "Running from commit ${{ inputs.refToBuild }}"
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
