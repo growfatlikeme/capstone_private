@@ -19,8 +19,6 @@ data:
                     "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
                     stat_prefix: ingress_http
                     generate_request_id: true
-                    tracing:
-                      operation_name: ingress
                     request_id_extension:
                       typed_config:
                         "@type": type.googleapis.com/envoy.extensions.request_id.uuid.v3.UuidRequestIdConfig
@@ -58,10 +56,10 @@ data:
           circuit_breakers:
             thresholds:
               - priority: DEFAULT
-                max_connections: 100
-                max_pending_requests: 100
-                max_requests: 500
-                max_retries: 3
+                max_connections: 500
+                max_pending_requests: 200
+                max_requests: 1000
+                max_retries: 5
           outlier_detection:
             consecutive_5xx: 3
             interval: 10s
@@ -77,11 +75,27 @@ data:
                           address: snake-frontend-headless.snakegame.svc.cluster.local
                           port_value: 80
     admin:
-      access_log_path: "/dev/null"
+      access_log:
+        - name: envoy.access_loggers.stdout
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.access_loggers.stream.v3.StdoutAccessLog
       address:
         socket_address:
           address: 0.0.0.0
           port_value: 9901
+    overload_manager:
+      refresh_interval: 0.25s
+      resource_monitors:
+        - name: "envoy.resource_monitors.fixed_heap"
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.resource_monitors.fixed_heap.v3.FixedHeapConfig
+            max_heap_size_bytes: 2147483648
+      actions:
+        - name: "envoy.overload_actions.stop_accepting_requests"
+          triggers:
+            - name: "envoy.resource_monitors.fixed_heap"
+              threshold:
+                value: 0.95
 ---
 apiVersion: v1
 kind: Service
@@ -152,18 +166,27 @@ spec:
           ports:
             - containerPort: 8080
             - containerPort: 9901
+          startupProbe:
+            httpGet:
+              path: /ready
+              port: 9901
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 9901
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
           volumeMounts:
             - name: envoy-config
               mountPath: /etc/envoy
         - name: snake-frontend
           image: hannamatheos/snake-frontend:latest
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 80
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            failureThreshold: 3
+          ports:
+            - containerPort: 80
+          # Readiness probe removed to avoid 404 failures
       volumes:
         - name: envoy-config
           configMap:

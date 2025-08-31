@@ -1,12 +1,92 @@
-config:
-  lokiAddress: http://loki-gateway.logging.svc.cluster.local:3100/loki/api/v1/push
+# override chart default hostPath for pods → mount full /var/log
+hostPath:
+  pods: /var/log
+  containers: /var/lib/docker/containers
 
 daemonset:
-  enabled: true
+  volumes:
+    - name: host-varlog
+      hostPath:
+        path: /var/log
+        type: DirectoryOrCreate
+    - name: promtail-positions
+      emptyDir: {}
+    - name: machine-id
+      hostPath:
+        path: /etc/machine-id
+        type: File
 
-tolerations:
-  - effect: NoSchedule
-    operator: Exists
+  volumeMounts:
+    - name: host-varlog
+      mountPath: /var/log
+      readOnly: true
+    - name: promtail-positions
+      mountPath: /run/promtail
+    - name: machine-id
+      mountPath: /etc/machine-id
+      readOnly: true
 
-client:
-  timeout: 10s
+config:
+  server:
+    log_level: debug
+    http_listen_port: 3101
+
+  clients:
+    - url: http://loki-gateway.logging.svc.cluster.local:3100/loki/api/v1/push
+
+  positions:
+    filename: /run/promtail/positions.yaml
+
+  scrape_configs:
+    - job_name: kubernetes-pods
+      pipeline_stages:
+        - cri: {}
+      kubernetes_sd_configs:
+        - role: pod
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_namespace]
+          action: replace
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          action: replace
+          target_label: pod
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          action: replace
+          target_label: container
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          action: replace
+          target_label: node_name
+        - source_labels:
+            - __meta_kubernetes_pod_label_app_kubernetes_io_name
+            - __meta_kubernetes_pod_label_app
+          regex: ^;*([^;]+)
+          action: replace
+          target_label: app
+        - source_labels:
+            - __meta_kubernetes_pod_label_app_kubernetes_io_instance
+            - __meta_kubernetes_pod_label_instance
+          regex: ^;*([^;]+)
+          action: replace
+          target_label: instance
+        - source_labels:
+            - __meta_kubernetes_pod_label_app_kubernetes_io_component
+            - __meta_kubernetes_pod_label_component
+          regex: ^;*([^;]+)
+          action: replace
+          target_label: component
+        - action: replace
+          separator: "/"
+          replacement: $1
+          source_labels: [namespace, app]
+          target_label: job
+        - source_labels:
+            - __meta_kubernetes_pod_uid
+            - __meta_kubernetes_pod_container_name
+          action: replace
+          separator: "/"
+          replacement: /var/log/pods/*$1/$2/0.log
+          target_label: __path__
+
+limits_config: {}
+tracing:
+  enabled: false

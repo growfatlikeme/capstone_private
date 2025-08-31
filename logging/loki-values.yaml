@@ -2,6 +2,7 @@ deploymentMode: SingleBinary
 
 gateway:
   enabled: true
+  hostNetwork: false # ← disable hostNetwork
   service:
     port: 3100
 
@@ -35,6 +36,7 @@ serviceAccount:
 
 singleBinary:
   replicas: 1
+  hostNetwork: false # ← also disable here
   persistence:
     enabled: false
   resources:
@@ -66,7 +68,7 @@ resultsCache:
 lokiCanary:
   enabled: true
   interval: 10s
-  lokiAddress: http://loki-gateway.logging.svc.cluster.local:3100
+  lokiAddress: http://loki-gateway.logging.svc.cluster.local:3100/loki/api/v1/push
   labels:
     job: "loki-canary"
     service: "loki-canary"
