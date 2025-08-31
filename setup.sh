@@ -92,16 +92,16 @@ log "  • Installing/Upgrading kube-prometheus-stack (+ Grafana sidecars)"
 helm upgrade --install kube-prometheus-stack \
   --create-namespace \
   --namespace kube-prometheus-stack \
-  -f monitoring_cluster/grafana/alertmanager-config.yaml \
-  -f monitoring_cluster/grafana/kube-prometheus-values.yaml \
+  -f monitoring_cluster/alertmanager-config.yaml \
+  -f monitoring_cluster/kube-prometheus-values.yaml \
   --set grafana.service.type=LoadBalancer \
   prometheus-community/kube-prometheus-stack
 
 log "  • Applying Prometheus custom rules"
-kubectl apply -f monitoring_cluster/grafana/custom-rules.yaml
+kubectl apply -f monitoring_cluster/custom-rules.yaml
 
 log "  • Installing Discord alerting bridge"
-kubectl apply -f monitoring_cluster/grafana/discord-bridge.yaml
+kubectl apply -f monitoring_cluster/discord-bridge.yaml
 
 # Wait for Grafana to be up (so sidecars can ingest)
 wait_deploy_ready kube-prometheus-stack kube-prometheus-stack-grafana 600s
