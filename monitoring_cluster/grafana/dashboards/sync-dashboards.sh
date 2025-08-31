@@ -2,9 +2,10 @@
 set -euo pipefail
 
 #==============================================================================
-# Grafana Dashboard Sync Script (Fixed Revisions, Safe Apply)
+# Grafana Dashboard Sync Script (Fixed Revisions, Continue on Error)
 # - Downloads specific revisions from Grafana.com
 # - Creates/updates ConfigMaps with grafana_dashboard=1 label
+# - Continues even if some dashboards fail
 #==============================================================================
 
 NS="kube-prometheus-stack"
@@ -44,15 +45,18 @@ download_revision() {
     return 0
   fi
 
-  # Create or update the ConfigMap from file
-  kubectl -n "$NS" create configmap "${name}" \
+  # Try to create/update the ConfigMap
+  if ! kubectl -n "$NS" create configmap "${name}" \
     --from-file="${name}.json=${json_file}" \
-    --dry-run=client -o yaml \
-    | kubectl apply -f -
+    --dry-run=client -o yaml | kubectl apply -f -; then
+    log "⚠️  Failed to apply ConfigMap for $name"
+    SKIPPED+=("$id ($name)")
+    return 0
+  fi
 
-  # Apply label and annotation separately to avoid empty stdin issues
-  kubectl -n "$NS" label configmap "${name}" grafana_dashboard=1 --overwrite
-  kubectl -n "$NS" annotate configmap "${name}" grafana_folder="$FOLDER" --overwrite
+  # Label and annotate, but don't fail if these error
+  kubectl -n "$NS" label configmap "${name}" grafana_dashboard=1 --overwrite || true
+  kubectl -n "$NS" annotate configmap "${name}" grafana_folder="$FOLDER" --overwrite || true
 
   ((SYNCED++))
 }
