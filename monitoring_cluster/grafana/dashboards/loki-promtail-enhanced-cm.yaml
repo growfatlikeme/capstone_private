@@ -1,0 +1,194 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: loki-promtail-enhanced
+  namespace: kube-prometheus-stack
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Monitoring"
+data:
+  loki-promtail-enhanced.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "type": "logs",
+          "title": "Recent Snakegame Logs",
+          "datasource": "Loki",
+          "id": 5,
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 0 },
+          "targets": [
+            {
+              "expr": "{namespace=\"snakegame\"} |= ``",
+              "refId": "A"
+            }
+          ],
+          "options": {
+            "showLabels": true,
+            "showTime": true,
+            "wrapLogMessage": true
+          }
+        },
+        {
+          "type": "graph",
+          "title": "Envoy Requests per Second",
+          "datasource": "Prometheus",
+          "id": 2,
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+          "targets": [
+            {
+              "expr": "rate(envoy_http_downstream_rq_total[1m])",
+              "legendFormat": "{{envoy_cluster_name}}",
+              "refId": "A"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2
+        },
+        {
+          "type": "graph",
+          "title": "Envoy Success Rate (%)",
+          "datasource": "Prometheus",
+          "id": 3,
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+          "targets": [
+            {
+              "expr": "100 * (sum(rate(envoy_http_downstream_rq_xx{envoy_response_code_class=\"2\"}[1m])) / sum(rate(envoy_http_downstream_rq_total[1m])))",
+              "legendFormat": "Success %",
+              "refId": "A"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2
+        },
+        {
+          "type": "graph",
+          "title": "Promtail Lines Ingested/sec",
+          "datasource": "Prometheus",
+          "id": 4,
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 18 },
+          "targets": [
+            {
+              "expr": "rate(promtail_sent_entries_total{namespace=\"logging\"}[1m])",
+              "legendFormat": "{{instance}}",
+              "refId": "A"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2
+        },
+        {
+          "type": "stat",
+          "title": "Promtail Drop Rate (%)",
+          "datasource": "Prometheus",
+          "id": 6,
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 18 },
+          "targets": [
+            {
+              "expr": "100 * (rate(promtail_dropped_entries_total{namespace=\"logging\"}[1m]) / (rate(promtail_sent_entries_total{namespace=\"logging\"}[1m]) + rate(promtail_dropped_entries_total{namespace=\"logging\"}[1m])))",
+              "legendFormat": "Drop %"
+            }
+          ],
+          "options": {
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+            "orientation": "horizontal",
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "center"
+          },
+          "fieldConfig": { "defaults": {}, "overrides": [] }
+        },
+        {
+          "type": "graph",
+          "title": "Gateway Error Breakdown by Class",
+          "datasource": "Prometheus",
+          "id": 7,
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 26 },
+          "targets": [
+            {
+              "expr": "sum(rate(envoy_http_downstream_rq_xx[1m])) by (envoy_response_code_class)",
+              "legendFormat": "{{envoy_response_code_class}}xx",
+              "refId": "A"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2,
+          "stack": true
+        },
+        {
+          "type": "graph",
+          "title": "Loki Chunks Created/sec",
+          "datasource": "Prometheus",
+          "id": 8,
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 34 },
+          "targets": [
+            {
+              "expr": "rate(loki_ingester_chunks_created_total{namespace=\"logging\"}[1m])",
+              "legendFormat": "created",
+              "refId": "A"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2
+        },
+        {
+          "type": "graph",
+          "title": "Loki Chunks Flushed/sec",
+          "datasource": "Prometheus",
+          "id": 9,
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 34 },
+          "targets": [
+            {
+              "expr": "rate(loki_ingester_chunks_flushed_total{namespace=\"logging\"}[1m])",
+              "legendFormat": "flushed",
+              "refId": "A"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2
+        },
+        {
+          "type": "graph",
+          "title": "Chunk Flush Lag",
+          "datasource": "Prometheus",
+          "id": 10,
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 34 },
+          "targets": [
+            {
+              "expr": "rate(loki_ingester_chunks_created_total{namespace=\"logging\"}[1m]) - rate(loki_ingester_chunks_flushed_total{namespace=\"logging\"}[1m])",
+              "legendFormat": "lag",
+              "refId": "A"
+            }
+          ],
+          "lines": true,
+          "linewidth": 2
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 36,
+      "style": "dark",
+      "tags": ["envoy", "loki", "promtail", "snakegame"],
+      "templating": { "list": [] },
+      "time": { "from": "now-15m", "to": "now" },
+      "timezone": "",
+      "title": "Snakegame - Envoy + Loki + Promtail (Namespace=logging)",
+      "version": 1
+    }
