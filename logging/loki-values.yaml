@@ -72,3 +72,42 @@ lokiCanary:
   labels:
     job: "loki-canary"
     service: "loki-canary"
+
+# Extra manifests to deploy alongside Loki
+extraObjects:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: loki-metrics
+      namespace: logging
+      labels:
+        app.kubernetes.io/name: loki
+        app.kubernetes.io/component: single-binary
+    spec:
+      selector:
+        app.kubernetes.io/name: loki
+        app.kubernetes.io/component: single-binary
+      ports:
+        - name: http-metrics
+          port: 3100
+          targetPort: 3100
+
+  - apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: loki
+      namespace: logging
+      labels:
+        release: kube-prometheus-stack
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: loki
+          app.kubernetes.io/component: single-binary
+      namespaceSelector:
+        matchNames:
+          - logging
+      endpoints:
+        - port: http-metrics
+          path: /metrics
+          interval: 30s

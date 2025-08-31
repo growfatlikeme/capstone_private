@@ -90,3 +90,38 @@ config:
 limits_config: {}
 tracing:
   enabled: false
+
+extraObjects:
+  - apiVersion: v1
+    kind: Service
+    metadata:
+      name: promtail-metrics
+      namespace: logging
+      labels:
+        app.kubernetes.io/name: promtail
+    spec:
+      selector:
+        app.kubernetes.io/name: promtail
+      ports:
+        - name: http-metrics
+          port: 3101
+          targetPort: 3101
+
+  - apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: promtail
+      namespace: logging
+      labels:
+        release: kube-prometheus-stack # <-- matches your Prometheus release label
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: promtail
+      namespaceSelector:
+        matchNames:
+          - logging
+      endpoints:
+        - port: http-metrics
+          path: /metrics
+          interval: 30s
