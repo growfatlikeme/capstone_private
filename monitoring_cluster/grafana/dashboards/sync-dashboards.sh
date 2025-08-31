@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set -x  # DEBUG: print each command before executing
 
 #==============================================================================
-# Grafana Dashboard Sync Script (Fixed Revisions, Continue on Error)
-# - Downloads specific revisions from Grafana.com
-# - Creates/updates ConfigMaps with grafana_dashboard=1 label
-# - Continues even if some dashboards fail
+# Grafana Dashboard Sync Script (Fixed Revisions, Continue on Error, Debug Mode)
 #==============================================================================
 
 NS="kube-prometheus-stack"
-FOLDER="${1:-Community Dashboards}"   # Allow override via first arg
+FOLDER="${1:-Community Dashboards}"
 TMP="$(mktemp -d -t dashboards-XXXXXX)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -17,7 +15,9 @@ SKIPPED=()
 SYNCED=0
 
 log() {
+  { set +x; } 2>/dev/null  # temporarily disable xtrace for clean log lines
   echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
+  set -x
 }
 
 fetch_with_retries() {
@@ -45,41 +45,49 @@ download_revision() {
     return 0
   fi
 
-  # Try to create/update the ConfigMap
-  if ! kubectl -n "$NS" create configmap "${name}" \
-    --from-file="${name}.json=${json_file}" \
-    --dry-run=client -o yaml | kubectl apply -f -; then
-    log "⚠️  Failed to apply ConfigMap for $name"
-    SKIPPED+=("$id ($name)")
-    return 0
-  fi
+  # DEBUG: show first 20 lines of downloaded JSON
+  log "📄 First 20 lines of downloaded JSON for ${name}:"
+  head -n 20 "${json_file}" || true
 
-  # Label and annotate, but don't fail if these error
-  kubectl -n "$NS" label configmap "${name}" grafana_dashboard=1 --overwrite || true
-  kubectl -n "$NS" annotate configmap "${name}" grafana_folder="$FOLDER" --overwrite || true
+  # Create/update the ConfigMap
+  kubectl -n "$NS" create configmap "${name}" \
+    --from-file="${name}.json=${json_file}" \
+    --dry-run=client -o yaml | kubectl apply -f - || {
+      log "❌ Failed to apply ConfigMap for $name"
+      SKIPPED+=("$id ($name)")
+      return 0
+    }
+
+  # Label — ignore harmless "not labeled" cases
+  kubectl -n "$NS" label configmap "${name}" grafana_dashboard=1 --overwrite || \
+    log "ℹ️  Label already present or unchanged for ${name} — moving on"
+
+  # Annotate — ignore harmless "not annotated" cases
+  kubectl -n "$NS" annotate configmap "${name}" grafana_folder="$FOLDER" --overwrite || \
+    log "ℹ️  Annotation already present or unchanged for ${name} — moving on"
 
   ((SYNCED++))
 }
 
 # Ensure namespace exists
-kubectl get ns "$NS" >/dev/null 2>&1 || kubectl create ns "$NS"
+kubectl get ns "$NS" >/dev/null 2>&1 || kubectl create ns "$NS" || true
 
 #------------------------------------------------------------------------------
 # Dashboards: ID, Revision -> stable name
 #------------------------------------------------------------------------------
-download_revision 23501 2 istio-envoy-listeners
-download_revision 23502 2 istio-envoy-clusters
-download_revision 23503 2 istio-envoy-http-conn-mgr
-download_revision 23239 1 envoy-proxy-monitoring-grpc
-download_revision 11022 1 envoy-global
-download_revision 22128 11 hpa
-download_revision 22874 3 k8s-app-logs-multi-cluster
-download_revision 10604 1 host-overview
-download_revision 15661 2 k8s-dashboard
-download_revision 18283 1 kubernetes-dashboard
-download_revision 16884 1 kubernetes-morning-dashboard
-download_revision 21073 1 monitoring-golden-signals
-download_revision 11074 9 node-exporter-dashboard
+download_revision 23501 2 istio-envoy-listeners || true
+download_revision 23502 2 istio-envoy-clusters || true
+download_revision 23503 2 istio-envoy-http-conn-mgr || true
+download_revision 23239 1 envoy-proxy-monitoring-grpc || true
+download_revision 11022 1 envoy-global || true
+download_revision 22128 11 hpa || true
+download_revision 22874 3 k8s-app-logs-multi-cluster || true
+download_revision 10604 1 host-overview || true
+download_revision 15661 2 k8s-dashboard || true
+download_revision 18283 1 kubernetes-dashboard || true
+download_revision 16884 1 kubernetes-morning-dashboard || true
+download_revision 21073 1 monitoring-golden-signals || true
+download_revision 11074 9 node-exporter-dashboard || true
 
 #------------------------------------------------------------------------------
 # Summary
