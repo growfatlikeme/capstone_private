@@ -2,7 +2,7 @@
 set -euo pipefail
 
 #==============================================================================
-# Grafana Dashboard Sync Script (Fixed Revisions)
+# Grafana Dashboard Sync Script (Fixed Revisions, Safe Apply)
 # - Downloads specific revisions from Grafana.com
 # - Creates/updates ConfigMaps with grafana_dashboard=1 label
 #==============================================================================
@@ -44,12 +44,15 @@ download_revision() {
     return 0
   fi
 
+  # Create or update the ConfigMap from file
   kubectl -n "$NS" create configmap "${name}" \
     --from-file="${name}.json=${json_file}" \
     --dry-run=client -o yaml \
-  | kubectl -n "$NS" label -f - grafana_dashboard=1 --overwrite \
-  | kubectl -n "$NS" annotate -f - grafana_folder="$FOLDER" --overwrite \
-  | kubectl apply -f -
+    | kubectl apply -f -
+
+  # Apply label and annotation separately to avoid empty stdin issues
+  kubectl -n "$NS" label configmap "${name}" grafana_dashboard=1 --overwrite
+  kubectl -n "$NS" annotate configmap "${name}" grafana_folder="$FOLDER" --overwrite
 
   ((SYNCED++))
 }
