@@ -8,12 +8,21 @@ set -euo pipefail
 
 log() { echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"; }
 
+delete_if_exists() {
+  local path="$1"
+  if [ -f "$path" ]; then
+    log "  • Deleting $path"
+    kubectl delete -f "$path" --ignore-not-found
+  else
+    log "  • Skipping $path (file not found)"
+  fi
+}
+
 log "💥 Starting Full EKS Teardown..."
 log "==============================================="
 log "⚠️  WARNING: This will remove ALL workloads, Helm releases, and namespaces!"
 log "⚠️  The cluster itself will remain (destroy via Terraform/GitHub workflow)"
 log "==============================================="
-echo ""
 
 #------------------------------------------------------------------------------
 # Cluster Connectivity Check
@@ -40,18 +49,18 @@ sleep 2
 log "🧼 Phase 2: Deleting workloads and applied manifests..."
 if [ "$SKIP_K8S" = false ]; then
   # Snakegame
-  kubectl delete -f snakegame/snakegame.yaml --ignore-not-found
-  kubectl delete -f snakegame/ingress.yaml --ignore-not-found
-  kubectl delete -f snakegame/scaledobject.yaml --ignore-not-found
+  delete_if_exists snakegame/snakegame.yaml
+  delete_if_exists snakegame/ingress.yaml
+  delete_if_exists snakegame/scaledobject.yaml
 
   # Discord bridge
-  kubectl delete -f monitoring_cluster/grafana/discord-bridge.yaml --ignore-not-found
+  delete_if_exists monitoring_cluster/grafana/discord-bridge.yaml
 
   # Loki datasource
-  kubectl delete -f logging/loki-datasource.yaml --ignore-not-found
+  delete_if_exists logging/loki-datasource.yaml
 
   # Custom dashboard
-  kubectl delete -f monitoring_cluster/grafana/dashboards/loki-promtail-enhanced-cm.yaml --ignore-not-found
+  delete_if_exists monitoring_cluster/grafana/dashboards/loki-promtail-enhanced-cm.yaml
 
   # Community dashboards created by sync script
   log "  • Deleting community dashboard ConfigMaps..."
@@ -59,7 +68,10 @@ if [ "$SKIP_K8S" = false ]; then
     -o name | xargs -r kubectl delete -n kube-prometheus-stack
 
   # OpenLens SA
-  kubectl delete -f openlens.yaml --ignore-not-found
+  delete_if_exists openlens.yaml
+
+  # Custom Prometheus rules
+  delete_if_exists monitoring_cluster/grafana/custom-rules.yaml
 else
   log "  • Skipped — no cluster connection."
 fi
@@ -90,9 +102,6 @@ if [ "$SKIP_K8S" = false ]; then
   kubectl delete scaledobject --all -n keda --ignore-not-found
   kubectl delete triggerauthentication --all -n keda --ignore-not-found
   kubectl delete clustertriggerauthentication --all --ignore-not-found
-
-  # PrometheusRule CRDs (custom rules)
-  kubectl delete -f monitoring_cluster/grafana/custom-rules.yaml --ignore-not-found
 else
   log "  • Skipped — no cluster connection."
 fi
