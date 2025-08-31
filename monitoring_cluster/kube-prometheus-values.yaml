@@ -3,7 +3,22 @@ grafana:
   service:
     type: LoadBalancer
 
-  # Enable the dashboard sidecar
+  # Provision Loki datasource at startup
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Loki
+          type: loki
+          access: proxy
+          url: http://loki-gateway.logging.svc.cluster.local:3100
+          isDefault: false
+          jsonData:
+            httpHeaderName1: "X-Scope-OrgID"
+          secureJsonData:
+            httpHeaderValue1: "fake"
+
+  # Enable the dashboard and datasource sidecars
   sidecar:
     dashboards:
       enabled: true
@@ -21,6 +36,7 @@ grafana:
         updateIntervalSeconds: 30
         options:
           path: /var/lib/grafana/dashboards
+
     datasources:
       enabled: true
       label: grafana_datasource

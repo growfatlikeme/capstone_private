@@ -5,7 +5,7 @@ set -euo pipefail
 # EKS Monitoring Stack Setup Script (robust, idempotent)
 # - Installs kube-prometheus-stack with Grafana sidecars
 # - Installs Loki + Promtail
-# - Provisions Loki datasource via sidecar
+# - Provisions Loki datasource via Helm values at startup
 # - Loads custom dashboard ConfigMap
 # - Syncs latest community dashboards into labeled ConfigMaps
 # - Deploys Snakegame
@@ -88,7 +88,7 @@ helm upgrade --install keda kedacore/keda \
 # --- Phase 3: Monitoring stack -----------------------------------------------
 log "📈 Phase 3: Installing monitoring stack"
 
-log "  • Installing/Upgrading kube-prometheus-stack (+ Grafana sidecars)"
+log "  • Installing/Upgrading kube-prometheus-stack (+ Grafana sidecars + Loki datasource via Helm)"
 helm upgrade --install kube-prometheus-stack \
   --create-namespace \
   --namespace kube-prometheus-stack \
@@ -103,7 +103,7 @@ kubectl apply -f monitoring_cluster/custom-rules.yaml
 log "  • Installing Discord alerting bridge"
 kubectl apply -f monitoring_cluster/discord-bridge.yaml
 
-# Wait for Grafana to be up (so sidecars can ingest)
+# Wait for Grafana to be up (so sidecars can ingest dashboards)
 wait_deploy_ready kube-prometheus-stack kube-prometheus-stack-grafana 600s
 
 # --- Phase 4: Logging stack ---------------------------------------------------
@@ -122,16 +122,8 @@ helm upgrade --install promtail grafana/promtail \
   --namespace logging \
   -f logging/promtail-values.yaml
 
-# Wait for Loki to be ready (ingesters or gateway)
+# Wait for Loki to be ready
 wait_pods_ready logging "app.kubernetes.io/name=loki" 600s
-# Small buffer for services/endpoints
-sleep 10
-
-# Configure Grafana Loki datasource via sidecar
-log "  • Applying Loki datasource (sidecar will import)"
-kubectl apply -f logging/loki-datasource.yaml
-
-# Give Grafana’s datasource sidecar a moment to reconcile
 sleep 10
 
 # --- Phase 5: Dashboards ------------------------------------------------------
@@ -140,13 +132,9 @@ log "📊 Phase 5: Deploying dashboards"
 log "  • Applying custom Snakegame dashboard ConfigMap"
 kubectl apply -f monitoring_cluster/grafana/dashboards/loki-promtail-enhanced-cm.yaml
 
-# Sync latest Grafana.com dashboards
 log "  • Syncing community dashboards (latest revs)"
 install_jq_if_needed
 bash monitoring_cluster/grafana/dashboards/sync-dashboards.sh
-
-# Optional: nudge Grafana to accelerate sidecar pickup (usually not needed)
-# kubectl rollout restart deployment/kube-prometheus-stack-grafana -n kube-prometheus-stack
 
 # --- Phase 6: Application -----------------------------------------------------
 log "🐍 Phase 6: Deploying Snake Game application"
