@@ -1,9 +1,9 @@
 grafana:
   enabled: true
+  defaultDatasourceEnabled: false # disable chart's default
   service:
     type: LoadBalancer
 
-  # Provision Loki datasource at startup
   datasources:
     datasources.yaml:
       apiVersion: 1
@@ -12,34 +12,25 @@ grafana:
           type: loki
           access: proxy
           url: http://loki-gateway.logging.svc.cluster.local:3100
+          uid: loki
           isDefault: false
           jsonData:
             httpHeaderName1: "X-Scope-OrgID"
           secureJsonData:
             httpHeaderValue1: "fake"
 
-  # Enable the dashboard and datasource sidecars
+        - name: Prometheus
+          type: prometheus
+          access: proxy
+          url: http://prometheus-operated.kube-prometheus-stack.svc:9090
+          uid: prometheus
+          isDefault: true
+
   sidecar:
     dashboards:
       enabled: true
+      folder: /var/lib/grafana/dashboards
       label: grafana_dashboard
       labelValue: "1"
-      folder: /var/lib/grafana/dashboards
-      folderAnnotation: grafana_folder
-      provider:
-        name: "sidecarProvider"
-        orgId: 1
-        folder: ""
-        type: file
-        disableDeletion: false
-        allowUiUpdates: true
-        updateIntervalSeconds: 30
-        options:
-          path: /var/lib/grafana/dashboards
-
     datasources:
-      enabled: true
-      label: grafana_datasource
-      labelValue: "1"
-      searchNamespace: ALL
-      initDatasources: true
+      enabled: false # disable to avoid duplicate defaults
