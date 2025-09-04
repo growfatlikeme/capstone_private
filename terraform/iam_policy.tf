@@ -33,7 +33,8 @@ resource "aws_iam_role_policy_attachment" "node_group_elb_policy" {
   role       = module.eks.eks_managed_node_groups.learner_ng.iam_role_name
 }
 
-# role for ExternalDNS
+# ROLE FOR EXTERNAL DNS
+###############################
 module "external_dns_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-assumable-role-with-oidc"
   version = "~> 5.52.1"
@@ -41,7 +42,7 @@ module "external_dns_role" {
   count = var.enable_external_dns ? 1 : 0
 
   create_role                    = true
-  role_name                      = "${local.name_prefix}-externaldns--role"
+  role_name                      = "${local.name_prefix}-externaldns-oidc-role"
   provider_url                   = module.eks.oidc_provider
   oidc_fully_qualified_audiences = ["sts.amazonaws.com"]
 
