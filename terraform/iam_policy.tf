@@ -73,3 +73,8 @@ module "external_dns_role" {
     }
   ]
 }
+
+resource "aws_iam_instance_profile" "karpenter" {
+  name = "${local.name_prefix}-KarpenterNodeInstanceProfile"
+  role = module.eks.eks_managed_node_groups.learner_ng.iam_role_name
+}

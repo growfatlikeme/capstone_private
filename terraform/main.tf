@@ -51,8 +51,8 @@ module "eks" {
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["t3.medium"]
       min_size       = 3
-      max_size       = 3
-      desired_size   = 3
+      max_size       = 5
+      desired_size   = 4
     }
   }
 }
@@ -78,4 +78,29 @@ module "vpc" {
     "kubernetes.io/role/internal-elb" = 1
   }
   
+}
+
+module "karpenter" {
+  source  = "terraform-aws-modules/eks/aws//modules/karpenter"
+  version = "20.34.0"
+
+  cluster_name                    = module.eks.cluster_name
+  enable_pod_identity             = true
+  create_pod_identity_association = true
+  namespace                       = "kube-system"
+  iam_role_name                   = "${local.name_prefix}-karpenter_controller"
+  iam_role_use_name_prefix        = false
+  iam_policy_name                 = "${local.name_prefix}-KarpenterControllerPolicy"
+  iam_policy_use_name_prefix      = false
+  iam_policy_description          = "Karpenter controller policy with all necessary permissions"
+  node_iam_role_name              = "${local.name_prefix}-KarpenterNodeRole"
+  node_iam_role_use_name_prefix   = false
+  node_iam_role_description       = "Karpenter node role with all necessary permissions"
+  queue_name                      = module.eks.cluster_name
+  node_iam_role_additional_policies = {
+    AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+    AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+    AmazonEKSWorkerNodePolicy          = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+    AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+  }
 }
