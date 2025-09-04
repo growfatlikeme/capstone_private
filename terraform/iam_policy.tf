@@ -1,5 +1,5 @@
 resource "aws_iam_policy" "external_dns" {
-  name_prefix = "${local.name_prefix}-external-dns-"
+  name_prefix = "${local.name_prefix}-external-dns"
   description = "External DNS policy for Route53 access"
 
   policy = jsonencode({
@@ -11,8 +11,7 @@ resource "aws_iam_policy" "external_dns" {
           "route53:ChangeResourceRecordSets"
         ]
         Resource = [
-          data.aws_route53_zone.hosteddns.arn,
-          "arn:aws:route53:::hostedzone/g3-snakegame"
+          ["arn:aws:route53:::hostedzone/*"]
         ]
       },
       {
@@ -42,7 +41,7 @@ module "external_dns_role" {
   count = var.enable_external_dns ? 1 : 0
 
   create_role                    = true
-  role_name                      = "${local.name_prefix}-externaldns-oidc-role"
+  role_name                      = "${local.name_prefix}-externaldns--role"
   provider_url                   = module.eks.oidc_provider
   oidc_fully_qualified_audiences = ["sts.amazonaws.com"]
 
