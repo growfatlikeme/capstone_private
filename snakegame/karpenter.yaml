@@ -6,15 +6,15 @@ metadata:
 spec:
   amiSelectorTerms:
     - alias: bottlerocket@latest
-  role: ex-karpenter
+  role: group3-SRE-KarpenterNodeRole
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: ex-karpenter
+        karpenter.sh/discovery: group3-SRE-cluster
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: ex-karpenter
+        karpenter.sh/discovery: group3-SRE-cluster
   tags:
-    karpenter.sh/discovery: ex-karpenter
+    karpenter.sh/discovery: group3-SRE-cluster
 ---
 apiVersion: karpenter.sh/v1
 kind: NodePool
