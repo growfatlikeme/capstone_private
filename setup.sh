@@ -11,7 +11,7 @@ DASHBOARD_DIR="$REPO_ROOT/monitoring_cluster/grafana/dashboards"
 # -----------------------------
 # Cluster & datasource settings
 # -----------------------------
-CLUSTER_NAME="${CLUSTER_NAME:-growfattest-cluster}"
+CLUSTER_NAME="${CLUSTER_NAME:-group3-SRE-cluster}"
 AWS_REGION="${AWS_REGION:-ap-southeast-1}"
 PROM_UID="prometheus"
 LOKI_UID="loki"

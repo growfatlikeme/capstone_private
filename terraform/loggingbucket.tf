@@ -1,4 +1,4 @@
 resource "aws_s3_bucket" "logging_bucket" {
-  bucket        = "growfattest-logging"
+  bucket        = "${local.name_prefix}-logging"
   force_destroy = true
 }

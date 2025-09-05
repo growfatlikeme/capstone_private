@@ -11,7 +11,7 @@ terraform {
 
   backend "s3" {
     bucket = "sctp-ce10-tfstate"
-    key    = "growfat_test.tfstate"
+    key    = "group3-SRE.tfstate"
     region = "ap-southeast-1"
   }
 }

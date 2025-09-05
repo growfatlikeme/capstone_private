@@ -10,7 +10,7 @@
 # Configuration
 #------------------------------------------------------------------------------
 REGION="ap-southeast-1"
-VPC_NAME="growfattest_vpc"
+VPC_NAME="group3-SRE_vpc"
 
 echo "🔍 Resolving VPC ID for VPC named: $VPC_NAME..."
 VPC_ID=$(aws ec2 describe-vpcs \

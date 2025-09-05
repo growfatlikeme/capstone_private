@@ -28,7 +28,7 @@ jobs:
         run: ls -R
 
       - name: ⚙️ Update kubeconfig for EKS cluster
-        run: aws eks update-kubeconfig --name growfattest-cluster --region ap-southeast-1 --kubeconfig ${{ env.KUBECONFIG }}
+        run: aws eks update-kubeconfig --name group3-SRE-cluster --region ap-southeast-1 --kubeconfig ${{ env.KUBECONFIG }}
 
       - name: 🐛 Debug kubeconfig contents
         run: |

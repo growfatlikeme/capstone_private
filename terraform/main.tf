@@ -1,5 +1,5 @@
 locals {
-  name_prefix = "growfattest"
+  name_prefix = "group3-SRE"
 }
 
 
