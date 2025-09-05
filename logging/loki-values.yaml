@@ -22,9 +22,9 @@ loki:
   storage:
     type: "s3"
     bucketNames:
-      chunks: group3-SRE-logging
-      ruler: group3-SRE-logging
-      admin: group3-SRE-logging
+      chunks: group3-sre-logging
+      ruler: group3-sre-logging
+      admin: group3-sre-logging
     s3:
       region: ap-southeast-1
       s3ForcePathStyle: false
