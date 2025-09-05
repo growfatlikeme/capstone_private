@@ -187,6 +187,12 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
 helm upgrade --install keda kedacore/keda \
   --namespace keda --create-namespace
 
+helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \
+  --version "1.6.3" \
+  --namespace "kube-system" \
+  --set "settings.clusterName=$CLUSTER_NAME" \
+  --set "settings.interruptionQueue=$CLUSTER_NAME"
+
 # --- Phase 3: Monitoring stack ---
 log "📈 Phase 3: Installing monitoring stack"
 helm upgrade --install kube-prometheus-stack \
@@ -241,6 +247,7 @@ kubectl create namespace snakegame --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "$REPO_ROOT/snakegame/snakegame.yaml"
 kubectl apply -f "$REPO_ROOT/snakegame/ingress.yaml"
 kubectl apply -f "$REPO_ROOT/snakegame/scaledobject.yaml"
+kubectl apply -f "$REPO_ROOT/snakegame/karpenter.yaml"
 
 # --- Phase 7: Access info ---
 log ""
