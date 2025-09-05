@@ -46,6 +46,14 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
+  # Add Karpenter discovery tags to cluster security groups
+  cluster_security_group_tags = {
+    "karpenter.sh/discovery" = "${local.name_prefix}-cluster"
+  }
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = "${local.name_prefix}-cluster"
+  }
+
   eks_managed_node_groups = {
     group3_ng = {
       ami_type       = "AL2023_x86_64_STANDARD"
