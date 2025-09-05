@@ -3,6 +3,11 @@ run-name: Running Terraform teardown by ${{ github.actor }}
 
 on:
   workflow_dispatch:
+    inputs:
+      refToBuild:
+        description: "Branch, tag or commit SHA to build"
+        required: false
+        type: string
 
 permissions:
   id-token: write
