@@ -87,6 +87,7 @@ if [ "$SKIP_K8S" = false ]; then
   helm uninstall kube-prometheus-stack -n kube-prometheus-stack || log "⚠️ Prometheus stack uninstall failed"
   helm uninstall ingress-nginx -n ingress-nginx || log "⚠️ Ingress uninstall failed"
   helm uninstall keda -n keda || log "⚠️ KEDA uninstall failed"
+  helm uninstall karpenter -n kube-system || log "⚠️ Karpenter uninstall failed"
 else
   log "  • Skipped — no cluster connection."
 fi
@@ -103,6 +104,12 @@ if [ "$SKIP_K8S" = false ]; then
   kubectl delete scaledobject --all -n keda --ignore-not-found
   kubectl delete triggerauthentication --all -n keda --ignore-not-found
   kubectl delete clustertriggerauthentication --all --ignore-not-found
+  
+  # Karpenter CRDs and resources
+  kubectl delete nodepool --all --ignore-not-found
+  kubectl delete ec2nodeclass --all --ignore-not-found
+  kubectl delete crd nodepools.karpenter.sh --ignore-not-found
+  kubectl delete crd ec2nodeclasses.karpenter.k8s.aws --ignore-not-found
 else
   log "  • Skipped — no cluster connection."
 fi
