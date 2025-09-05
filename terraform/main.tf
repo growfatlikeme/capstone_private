@@ -53,6 +53,11 @@ module "eks" {
       min_size       = 3
       max_size       = 5
       desired_size   = 4
+      
+      # Add Karpenter discovery tags
+      tags = {
+        "karpenter.sh/discovery" = "${local.name_prefix}-cluster"
+      }
     }
   }
 }
