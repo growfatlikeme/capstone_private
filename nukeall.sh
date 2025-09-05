@@ -52,9 +52,10 @@ if [ "$SKIP_K8S" = false ]; then
   delete_if_exists snakegame/snakegame.yaml
   delete_if_exists snakegame/ingress.yaml
   delete_if_exists snakegame/scaledobject.yaml
+  delete_if_exists snakegame/karpenter.yaml
 
   # Discord bridge
-  delete_if_exists monitoring_cluster/grafana/discord-bridge.yaml
+  delete_if_exists monitoring_cluster/discord-bridge.yaml
 
   # Loki datasource
   delete_if_exists logging/loki-datasource.yaml
@@ -71,7 +72,7 @@ if [ "$SKIP_K8S" = false ]; then
   delete_if_exists openlens.yaml
 
   # Custom Prometheus rules
-  delete_if_exists monitoring_cluster/grafana/custom-rules.yaml
+  delete_if_exists monitoring_cluster/custom-rules.yaml
 else
   log "  • Skipped — no cluster connection."
 fi
