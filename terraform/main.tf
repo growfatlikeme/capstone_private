@@ -47,7 +47,7 @@ module "eks" {
   subnet_ids = module.vpc.private_subnets
 
   eks_managed_node_groups = {
-    learner_ng = {
+    group3_ng = {
       ami_type       = "AL2023_x86_64_STANDARD"
       instance_types = ["t3.medium"]
       min_size       = 3

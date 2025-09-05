@@ -1,7 +1,7 @@
 # resource "aws_iam_policy" "external_dns" {
 #   name_prefix = "${local.name_prefix}-external-dns"
 #   description = "External DNS policy for Route53 access"
-
+#
 #   policy = jsonencode({
 #     Version = "2012-10-17"
 #     Statement = [
@@ -30,7 +30,7 @@
 # Attach ELB policy to node group for LoadBalancer creation
 resource "aws_iam_role_policy_attachment" "node_group_elb_policy" {
   policy_arn = "arn:aws:iam::aws:policy/ElasticLoadBalancingFullAccess"
-  role       = module.eks.eks_managed_node_groups.learner_ng.iam_role_name
+  role       = module.eks.eks_managed_node_groups.group3_ng.iam_role_name
 }
 
 # ROLE FOR EXTERNAL DNS
@@ -76,5 +76,5 @@ module "external_dns_role" {
 
 resource "aws_iam_instance_profile" "karpenter" {
   name = "${local.name_prefix}-KarpenterNodeInstanceProfile"
-  role = module.eks.eks_managed_node_groups.learner_ng.iam_role_name
+  role = module.eks.eks_managed_node_groups.group3_ng.iam_role_name
 }
