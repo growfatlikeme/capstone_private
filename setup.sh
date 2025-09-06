@@ -184,6 +184,14 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx --create-namespace \
   --set controller.service.type=LoadBalancer
 
+# Wait for ingress to get LoadBalancer IP and update Route53
+log "⏳ Waiting for nginx ingress LoadBalancer..."
+kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/name=ingress-nginx --timeout=300s
+sleep 30  # Allow time for LoadBalancer provisioning
+
+log "🌐 Updating Route53 DNS record early for propagation"
+"$REPO_ROOT/update-route53.sh"
+
 helm upgrade --install keda kedacore/keda \
   --namespace keda --create-namespace
 
@@ -263,6 +271,8 @@ log "📊 Grafana Dashboard:"
 echo "   LoadBalancer: http://$(kubectl get svc kube-prometheus-stack-grafana -n kube-prometheus-stack -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
 echo "   Username: admin"
 echo "   Password: $(kubectl --namespace kube-prometheus-stack get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d || echo 'retrieving...')"
+
+
 
 log ""
 log "==============================================="
