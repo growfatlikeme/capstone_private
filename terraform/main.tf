@@ -60,7 +60,7 @@ module "eks" {
       instance_types = ["t3.medium"]
       min_size       = 3
       max_size       = 5
-      desired_size   = 4
+      desired_size   = 3
       
       # Add Karpenter discovery tags
       tags = {
@@ -102,7 +102,7 @@ module "karpenter" {
   cluster_name                    = module.eks.cluster_name
   enable_pod_identity             = true
   create_pod_identity_association = true
-  namespace                       = "kube-system"
+  namespace                       = "karpenter"
   iam_role_name                   = "${local.name_prefix}-karpenter_controller"
   iam_role_use_name_prefix        = false
   iam_policy_name                 = "${local.name_prefix}-KarpenterControllerPolicy"

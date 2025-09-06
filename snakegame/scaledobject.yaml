@@ -5,11 +5,11 @@ metadata:
   namespace: snakegame
 spec:
   scaleTargetRef:
-    kind: Deployment 
+    kind: Deployment
     name: snake-frontend
   minReplicaCount: 4
-  maxReplicaCount: 10
-  cooldownPeriod: 60
+  maxReplicaCount: 8
+  cooldownPeriod: 30
   pollingInterval: 15
   triggers:
     # 1. HTTP RPS via Envoy
@@ -17,7 +17,7 @@ spec:
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: envoy_rps
-        query: sum(rate(envoy_cluster_upstream_rq_total{cluster="snakegame"}[1m])) 
+        query: sum(rate(envoy_cluster_upstream_rq_total{cluster_name="snake_service"}[1m]))
         threshold: "20"
 
     # 2. Active Connections
@@ -25,7 +25,7 @@ spec:
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: envoy_active_connections
-        query: sum(envoy_cluster_upstream_cx_active{cluster="snakegame"})
+        query: sum(envoy_cluster_upstream_cx_active{cluster_name="snake_service"})
         threshold: "50"
 
     # 3. Request Latency (p95 in milliseconds)
@@ -35,15 +35,15 @@ spec:
         metricName: http_latency_p95
         query: |
           histogram_quantile(0.95, sum(rate(envoy_cluster_upstream_rq_time_bucket{cluster_name="snake_service"}[1m])) by (le))
-        threshold: "0.3"  # seconds (300ms)
+        threshold: "0.3" # seconds (300ms)
 
     # 4. HTTP 5xx Error Rate
     - type: prometheus
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: http_5xx
-        query: sum(rate(envoy_cluster_upstream_rq_5xx{cluster="snakegame"}[1m]))
-        threshold: "1"  # more than 1 5xx per second = scale up
+        query: sum(rate(envoy_cluster_upstream_rq_5xx{cluster_name="snake_service"}[1m]))
+        threshold: "1" # more than 1 5xx per second = scale up
 
     # 5. CPU Usage (%)
     - type: prometheus

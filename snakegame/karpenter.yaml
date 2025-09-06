@@ -35,7 +35,7 @@ spec:
           operator: In
           values: ["nitro"]
   limits:
-    cpu: 1000
+    cpu: 2000
   disruption:
     consolidationPolicy: WhenEmpty
     consolidateAfter: 30s
