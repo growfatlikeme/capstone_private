@@ -20,17 +20,10 @@ LOKI_UID="loki"
 # Dashboards to fetch
 # -----------------------------
 DASHBOARDS_TO_FETCH=(
-  "23501:2:istio-envoy-listeners.json"
-  "23502:2:istio-envoy-clusters.json"
-  "23503:2:istio-envoy-http-conn-mgr.json"
   "23239:1:envoy-proxy-monitoring-grpc.json"
   "11022:1:envoy-global.json"
-  "22128:11:hpa.json"
   "22874:3:k8s-app-logs-multi-cluster.json"
   "10604:1:host-overview.json"
-  "18283:1:kubernetes-dashboard.json"
-  "16884:1:kubernetes-morning-dashboard.json"
-  "21073:1:monitoring-golden-signals.json"
   "11074:9:node-exporter-dashboard.json"
 )
 
@@ -252,6 +245,18 @@ if [[ -f "$DASHBOARD_DIR/loki-promtail-enhanced-cm.yaml" ]]; then
 fi
 if [[ -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml" ]]; then
   kubectl apply -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/envoy-clusters-enhanced.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-overview.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-overview.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-outliner.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-outliner.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-stats.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-stats.yaml"
 fi
 
 # --- Phase 6: Application ---
