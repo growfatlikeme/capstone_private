@@ -87,7 +87,7 @@ if [ "$SKIP_K8S" = false ]; then
   helm uninstall kube-prometheus-stack -n kube-prometheus-stack || log "⚠️ Prometheus stack uninstall failed"
   helm uninstall ingress-nginx -n ingress-nginx || log "⚠️ Ingress uninstall failed"
   helm uninstall keda -n keda || log "⚠️ KEDA uninstall failed"
-  helm uninstall karpenter -n kube-system || log "⚠️ Karpenter uninstall failed"
+  helm uninstall karpenter -n karpenter || log "⚠️ Karpenter uninstall failed"
 else
   log "  • Skipped — no cluster connection."
 fi
@@ -119,7 +119,7 @@ fi
 #------------------------------------------------------------------------------
 log "🧹 Phase 5: Deleting namespaces..."
 if [ "$SKIP_K8S" = false ]; then
-  for ns in snakegame logging kube-prometheus-stack ingress-nginx keda; do
+  for ns in snakegame logging kube-prometheus-stack ingress-nginx keda karpenter; do
     log "  • Deleting namespace: $ns"
     kubectl delete namespace "$ns" --ignore-not-found || log "⚠️ Failed to delete namespace: $ns"
   done

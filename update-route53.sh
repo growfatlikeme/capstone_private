@@ -8,12 +8,19 @@ AWS_REGION="${AWS_REGION:-ap-southeast-1}"
 
 log() { echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"; }
 
-# Get nginx ingress load balancer hostname
+# Get nginx ingress load balancer hostname with retries
 log "🔍 Getting nginx ingress load balancer hostname..."
-INGRESS_HOSTNAME=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+for i in {1..10}; do
+    INGRESS_HOSTNAME=$(kubectl get svc ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
+    if [[ -n "$INGRESS_HOSTNAME" && "$INGRESS_HOSTNAME" != "<none>" ]]; then
+        break
+    fi
+    log "⏳ Attempt $i/10: Waiting for LoadBalancer hostname..."
+    sleep 10
+done
 
-if [[ -z "$INGRESS_HOSTNAME" ]]; then
-    log "❌ Could not get ingress hostname. Make sure nginx ingress is deployed and has a load balancer."
+if [[ -z "$INGRESS_HOSTNAME" || "$INGRESS_HOSTNAME" == "<none>" ]]; then
+    log "❌ Could not get ingress hostname after 10 attempts. Skipping Route53 update."
     exit 1
 fi
 
@@ -52,14 +59,22 @@ CHANGE_BATCH=$(cat <<EOF
 EOF
 )
 
+# Verify current DNS record before updating
+log "🔍 Checking current DNS record..."
+CURRENT_RECORD=$(aws route53 list-resource-record-sets --hosted-zone-id "$HOSTED_ZONE_ID" --query "ResourceRecordSets[?Name=='$DOMAIN_NAME.'].ResourceRecords[0].Value" --output text 2>/dev/null || echo "none")
+log "📋 Current record points to: $CURRENT_RECORD"
+
 # Update Route53 record
 log "🔄 Updating Route53 record for $DOMAIN_NAME to point to $INGRESS_HOSTNAME..."
-CHANGE_ID=$(aws route53 change-resource-record-sets \
+if CHANGE_ID=$(aws route53 change-resource-record-sets \
     --hosted-zone-id "$HOSTED_ZONE_ID" \
     --change-batch "$CHANGE_BATCH" \
     --query 'ChangeInfo.Id' \
-    --output text)
-
-log "✅ Route53 update initiated. Change ID: $CHANGE_ID"
-log "🎯 $DOMAIN_NAME now points to $INGRESS_HOSTNAME"
-log "⏳ DNS propagation may take a few minutes..."
+    --output text 2>&1); then
+    log "✅ Route53 update initiated. Change ID: $CHANGE_ID"
+    log "🎯 $DOMAIN_NAME now points to $INGRESS_HOSTNAME"
+    log "⏳ DNS propagation may take a few minutes..."
+else
+    log "❌ Failed to update Route53 record: $CHANGE_ID"
+    exit 1
+fi

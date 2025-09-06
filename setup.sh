@@ -190,14 +190,17 @@ kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/nam
 sleep 30  # Allow time for LoadBalancer provisioning
 
 log "🌐 Updating Route53 DNS record early for propagation"
-"$REPO_ROOT/update-route53.sh"
+if ! "$REPO_ROOT/update-route53.sh" 2>&1; then
+    log "❌ Route53 update failed: $?"
+fi
 
 helm upgrade --install keda kedacore/keda \
   --namespace keda --create-namespace
 
 helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \
   --version "1.6.3" \
-  --namespace "kube-system" \
+  --namespace "karpenter" \
+  --create-namespace \
   --set "settings.clusterName=$CLUSTER_NAME" \
   --set "settings.interruptionQueue=$CLUSTER_NAME"
 
@@ -247,6 +250,9 @@ fi
 # Apply any static custom dashboards (already cleaned now)
 if [[ -f "$DASHBOARD_DIR/loki-promtail-enhanced-cm.yaml" ]]; then
   kubectl apply -f "$DASHBOARD_DIR/loki-promtail-enhanced-cm.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml"
 fi
 
 # --- Phase 6: Application ---
