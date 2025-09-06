@@ -246,7 +246,7 @@ fi
 if [[ -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml" ]]; then
   kubectl apply -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml"
 fi
-if [[ -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml" ]]; then
+if [[ -f "$DASHBOARD_DIR/envoy-clusters-enhanced.yaml" ]]; then
   kubectl apply -f "$DASHBOARD_DIR/envoy-clusters-enhanced.yaml"
 fi
 if [[ -f "$DASHBOARD_DIR/custom-overview.yaml" ]]; then
