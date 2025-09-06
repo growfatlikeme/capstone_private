@@ -5900,7 +5900,7 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "K8S Dashboard2",
-      "uid": "944aa270-7099-4ac2-b97b-02225c9cd2desd",
+      "title": "Custom K8S Dashboard",
+      "uid": "group3dashboard",
       "version": 3
     }

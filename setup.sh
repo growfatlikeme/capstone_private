@@ -28,7 +28,6 @@ DASHBOARDS_TO_FETCH=(
   "22128:11:hpa.json"
   "22874:3:k8s-app-logs-multi-cluster.json"
   "10604:1:host-overview.json"
-  "15661:2:k8s-dashboard-en.json"
   "18283:1:kubernetes-dashboard.json"
   "16884:1:kubernetes-morning-dashboard.json"
   "21073:1:monitoring-golden-signals.json"

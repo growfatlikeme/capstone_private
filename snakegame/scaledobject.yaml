@@ -9,7 +9,7 @@ spec:
     name: snake-frontend
   minReplicaCount: 4
   maxReplicaCount: 8
-  cooldownPeriod: 30
+  cooldownPeriod: 15
   pollingInterval: 15
   triggers:
     # 1. HTTP RPS via Envoy
@@ -17,15 +17,15 @@ spec:
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: envoy_rps
-        query: sum(rate(envoy_cluster_upstream_rq_total{cluster_name="snake_service"}[1m]))
-        threshold: "20"
+        query: sum(rate(envoy_cluster_upstream_rq_total{cluster="snakegame"}[1m]))
+        threshold: "5"
 
     # 2. Active Connections
     - type: prometheus
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: envoy_active_connections
-        query: sum(envoy_cluster_upstream_cx_active{cluster_name="snake_service"})
+        query: sum(envoy_cluster_upstream_cx_active{cluster="snakegame"})
         threshold: "50"
 
     # 3. Request Latency (p95 in milliseconds)
@@ -34,7 +34,7 @@ spec:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: http_latency_p95
         query: |
-          histogram_quantile(0.95, sum(rate(envoy_cluster_upstream_rq_time_bucket{cluster_name="snake_service"}[1m])) by (le))
+          histogram_quantile(0.95, sum(rate(envoy_cluster_upstream_rq_time_bucket{cluster="snakegame"}[1m])) by (le))
         threshold: "0.3" # seconds (300ms)
 
     # 4. HTTP 5xx Error Rate
@@ -42,17 +42,13 @@ spec:
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: http_5xx
-        query: sum(rate(envoy_cluster_upstream_rq_5xx{cluster_name="snake_service"}[1m]))
+        query: sum(rate(envoy_cluster_upstream_rq_5xx{cluster="snakegame"}[1m]))
         threshold: "1" # more than 1 5xx per second = scale up
 
-    # 5. CPU Usage (%)
+    # 5. CPU Usage
     - type: prometheus
       metadata:
         serverAddress: http://kube-prometheus-stack-prometheus.kube-prometheus-stack.svc.cluster.local:9090
         metricName: cpu_usage
-        query: |
-          sum(
-          node_namespace_pod_container:container_cpu_usage_seconds_total:sum_rate5m{
-            namespace="snakegame",
-            pod=~"snake-frontend-.*"})
-        threshold: "0.1"
+        query: sum(rate(container_cpu_usage_seconds_total{namespace="snakegame",pod=~"snake-frontend-.*",container!="POD",container!=""}[1m]))
+        threshold: "0.02"
