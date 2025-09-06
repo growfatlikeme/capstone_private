@@ -6,15 +6,15 @@ metadata:
 spec:
   amiSelectorTerms:
     - alias: bottlerocket@latest
-  role: ex-karpenter
+  role: group3-SRE-KarpenterNodeRole
   subnetSelectorTerms:
     - tags:
-        karpenter.sh/discovery: ex-karpenter
+        karpenter.sh/discovery: group3-SRE-cluster
   securityGroupSelectorTerms:
     - tags:
-        karpenter.sh/discovery: ex-karpenter
+        karpenter.sh/discovery: group3-SRE-cluster
   tags:
-    karpenter.sh/discovery: ex-karpenter
+    karpenter.sh/discovery: group3-SRE-cluster
 ---
 apiVersion: karpenter.sh/v1
 kind: NodePool
@@ -28,20 +28,14 @@ spec:
         kind: EC2NodeClass
         name: default
       requirements:
-        - key: "karpenter.k8s.aws/instance-category"
+        - key: "node.kubernetes.io/instance-type"
           operator: In
-          values: ["c", "m", "r"]
-        - key: "karpenter.k8s.aws/instance-cpu"
+          values: ["t3.medium"]
+        - key: "karpenter.sh/capacity-type"
           operator: In
-          values: ["4", "8", "16", "32"]
-        - key: "karpenter.k8s.aws/instance-hypervisor"
-          operator: In
-          values: ["nitro"]
-        - key: "karpenter.k8s.aws/instance-generation"
-          operator: Gt
-          values: ["2"]
+          values: ["on-demand"]
   limits:
-    cpu: 1000
+    cpu: 2000
   disruption:
     consolidationPolicy: WhenEmpty
     consolidateAfter: 30s

@@ -20,18 +20,10 @@ LOKI_UID="loki"
 # Dashboards to fetch
 # -----------------------------
 DASHBOARDS_TO_FETCH=(
-  "23501:2:istio-envoy-listeners.json"
-  "23502:2:istio-envoy-clusters.json"
-  "23503:2:istio-envoy-http-conn-mgr.json"
   "23239:1:envoy-proxy-monitoring-grpc.json"
   "11022:1:envoy-global.json"
-  "22128:11:hpa.json"
   "22874:3:k8s-app-logs-multi-cluster.json"
   "10604:1:host-overview.json"
-  "15661:2:k8s-dashboard-en.json"
-  "18283:1:kubernetes-dashboard.json"
-  "16884:1:kubernetes-morning-dashboard.json"
-  "21073:1:monitoring-golden-signals.json"
   "11074:9:node-exporter-dashboard.json"
 )
 
@@ -184,8 +176,25 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
   --namespace ingress-nginx --create-namespace \
   --set controller.service.type=LoadBalancer
 
+# Wait for ingress to get LoadBalancer IP and update Route53
+log "⏳ Waiting for nginx ingress LoadBalancer..."
+kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/name=ingress-nginx --timeout=300s
+sleep 30  # Allow time for LoadBalancer provisioning
+
+log "🌐 Updating Route53 DNS record early for propagation"
+if ! "$REPO_ROOT/update-route53.sh" 2>&1; then
+    log "❌ Route53 update failed: $?"
+fi
+
 helm upgrade --install keda kedacore/keda \
   --namespace keda --create-namespace
+
+helm upgrade --install karpenter oci://public.ecr.aws/karpenter/karpenter \
+  --version "1.6.3" \
+  --namespace "karpenter" \
+  --create-namespace \
+  --set "settings.clusterName=$CLUSTER_NAME" \
+  --set "settings.interruptionQueue=$CLUSTER_NAME"
 
 # --- Phase 3: Monitoring stack ---
 log "📈 Phase 3: Installing monitoring stack"
@@ -234,6 +243,21 @@ fi
 if [[ -f "$DASHBOARD_DIR/loki-promtail-enhanced-cm.yaml" ]]; then
   kubectl apply -f "$DASHBOARD_DIR/loki-promtail-enhanced-cm.yaml"
 fi
+if [[ -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-k8s-dashboard.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/envoy-clusters-enhanced.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/envoy-clusters-enhanced.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-overview.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-overview.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-outliner.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-outliner.yaml"
+fi
+if [[ -f "$DASHBOARD_DIR/custom-stats.yaml" ]]; then
+  kubectl apply -f "$DASHBOARD_DIR/custom-stats.yaml"
+fi
 
 # --- Phase 6: Application ---
 log "🐍 Phase 6: Deploying Snake Game application"
@@ -241,6 +265,7 @@ kubectl create namespace snakegame --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -f "$REPO_ROOT/snakegame/snakegame.yaml"
 kubectl apply -f "$REPO_ROOT/snakegame/ingress.yaml"
 kubectl apply -f "$REPO_ROOT/snakegame/scaledobject.yaml"
+kubectl apply -f "$REPO_ROOT/snakegame/karpenter.yaml"
 
 # --- Phase 7: Access info ---
 log ""
@@ -256,6 +281,8 @@ log "📊 Grafana Dashboard:"
 echo "   LoadBalancer: http://$(kubectl get svc kube-prometheus-stack-grafana -n kube-prometheus-stack -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
 echo "   Username: admin"
 echo "   Password: $(kubectl --namespace kube-prometheus-stack get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d || echo 'retrieving...')"
+
+
 
 log ""
 log "==============================================="

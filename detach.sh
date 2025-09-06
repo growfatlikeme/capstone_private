@@ -161,7 +161,62 @@ for rt in $ROUTE_TABLE_IDS; do
 done
 
 #------------------------------------------------------------------------------
-# Phase 7: Delete Subnets
+# Phase 7: Delete Route53 DNS Records
+#------------------------------------------------------------------------------
+echo "🌐 Deleting Route53 DNS records..."
+
+# Get hosted zone ID for sctp-sandbox.com
+HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+  --dns-name "sctp-sandbox.com" \
+  --query "HostedZones[0].Id" \
+  --output text 2>/dev/null | sed 's|/hostedzone/||' || echo "")
+
+if [[ -n "$HOSTED_ZONE_ID" && "$HOSTED_ZONE_ID" != "None" ]]; then
+  echo "  • Found hosted zone: $HOSTED_ZONE_ID"
+  
+  # Delete g3-snakegame CNAME record
+  RECORD_EXISTS=$(aws route53 list-resource-record-sets \
+    --hosted-zone-id "$HOSTED_ZONE_ID" \
+    --query "ResourceRecordSets[?Name=='g3-snakegame.sctp-sandbox.com.'].Name" \
+    --output text 2>/dev/null || echo "")
+  
+  if [[ -n "$RECORD_EXISTS" ]]; then
+    echo "  • Deleting g3-snakegame.sctp-sandbox.com DNS record..."
+    
+    # Get the current record details
+    RECORD_VALUE=$(aws route53 list-resource-record-sets \
+      --hosted-zone-id "$HOSTED_ZONE_ID" \
+      --query "ResourceRecordSets[?Name=='g3-snakegame.sctp-sandbox.com.'].ResourceRecords[0].Value" \
+      --output text 2>/dev/null || echo "")
+    
+    if [[ -n "$RECORD_VALUE" ]]; then
+      aws route53 change-resource-record-sets \
+        --hosted-zone-id "$HOSTED_ZONE_ID" \
+        --change-batch "{
+          \"Changes\": [{
+            \"Action\": \"DELETE\",
+            \"ResourceRecordSet\": {
+              \"Name\": \"g3-snakegame.sctp-sandbox.com\",
+              \"Type\": \"CNAME\",
+              \"TTL\": 300,
+              \"ResourceRecords\": [{
+                \"Value\": \"$RECORD_VALUE\"
+              }]
+            }
+          }]
+        }" || echo "    ⚠️ Failed to delete DNS record"
+    else
+      echo "    ⚠️ Could not retrieve record value"
+    fi
+  else
+    echo "  • No g3-snakegame DNS record found"
+  fi
+else
+  echo "  • No hosted zone found for sctp-sandbox.com"
+fi
+
+#------------------------------------------------------------------------------
+# Phase 8: Delete Subnets
 #------------------------------------------------------------------------------
 echo "📦 Deleting subnets..."
 SUBNET_IDS=$(aws ec2 describe-subnets \

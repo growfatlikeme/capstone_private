@@ -8,5 +8,5 @@ resource "aws_iam_role_policy_attachment" "node_group_elb_policy" {
 
 resource "aws_iam_instance_profile" "karpenter" {
   name = "${local.name_prefix}-KarpenterNodeInstanceProfile"
-  role = module.eks.eks_managed_node_groups.group3_ng.iam_role_name
+  role = module.karpenter.node_iam_role_name
 }
