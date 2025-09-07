@@ -1734,7 +1734,9 @@ data:
           "1d"
         ]
       },
-      "timezone": "utc",
+      "refresh": "5s",
+      "timepicker": {},
+      "timezone": "Asia/Singapore",
       "title": "# Enhanced Envoy Clusters Dashboard",
       "version": 0
     }

@@ -1271,7 +1271,21 @@ data:
         "from": "now-1h",
         "to": "now"
       },
-      "timepicker": {},
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "refresh": "5s",
       "timezone": "Asia/Singapore",
       "title": "# HPA Envoy / Loki / Promtail",
       "uid": "ab4b3c0a-73c1-41ee-b75d-7b5dccb5fb54",
