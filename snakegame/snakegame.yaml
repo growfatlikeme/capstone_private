@@ -209,4 +209,5 @@ spec:
   endpoints:
     - port: admin
       path: /stats/prometheus
-      interval: 15s
+      interval: 5s
+      scrapeTimeout: 4s

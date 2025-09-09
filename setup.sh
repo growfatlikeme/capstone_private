@@ -181,9 +181,9 @@ log "⏳ Waiting for nginx ingress LoadBalancer..."
 kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/name=ingress-nginx --timeout=300s
 sleep 30  # Allow time for LoadBalancer provisioning
 
-log "🌐 Updating Route53 DNS record early for propagation"
+log "🌐 Updating Route53 DNS records early for propagation"
 if ! "$REPO_ROOT/update-route53.sh" 2>&1; then
-    log "❌ Route53 update failed: $?"
+    log "❌ Snake game Route53 update failed: $?"
 fi
 
 helm upgrade --install keda kedacore/keda \
@@ -209,6 +209,11 @@ kubectl apply -f "$REPO_ROOT/monitoring_cluster/custom-rules.yaml"
 kubectl apply -f "$REPO_ROOT/monitoring_cluster/discord-bridge.yaml"
 
 wait_deploy_ready kube-prometheus-stack kube-prometheus-stack-grafana 600s
+
+log "🌐 Updating Grafana Route53 DNS record"
+if ! "$REPO_ROOT/update-route53-grafana.sh" 2>&1; then
+    log "❌ Grafana Route53 update failed: $?"
+fi
 
 # --- Phase 4: Logging stack ---
 log "📝 Phase 4: Installing logging stack"
@@ -274,10 +279,12 @@ log "🎮 APPLICATION URLS"
 log "==============================================="
 
 log "🐍 Snake Game:"
+echo "   Route53: http://g3-snakegame.sctp-sandbox.com"
 echo "   LoadBalancer: http://$(kubectl get svc snake-frontend-service -n snakegame -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
 
 log ""
 log "📊 Grafana Dashboard:"
+echo "   Route53: http://g3-dashboard.sctp-sandbox.com"
 echo "   LoadBalancer: http://$(kubectl get svc kube-prometheus-stack-grafana -n kube-prometheus-stack -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo 'pending...')"
 echo "   Username: admin"
 echo "   Password: $(kubectl --namespace kube-prometheus-stack get secret kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' 2>/dev/null | base64 -d || echo 'retrieving...')"
