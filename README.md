@@ -1,6 +1,106 @@
-## :pushpin: Getting Started
+**Reimagining Classic Games with SRE: A Cloud-Native Deployment of Snake**
 
-This is the README file/page for Nanyang Technological University (NTU) Skillsfuture Career Transition Programme (SCTP) Cloud Infrastructure Engineering Cohort 10 (CE10) Group 3 Site Reliability Engineering (SRE) Project repository.
+This capstone project demonstrates the group’s (NTU CE10 group 3) exploration of **Site Reliability Engineering (SRE)** principles through a modern reimagining of the classic Snake Game.  
+Originally popularized on Nokia mobile phones in the 2000s, Snake was a simple yet addictive game enjoyed. In this project, we envision how such a game could be deployed today using **cloud-native infrastructure**. Our focus is on three core SRE pillars: **scalability, reliability, and observability**. The goal is to show how Snake can be made globally accessible, monitored in real time, and automatically scaled to meet fluctuating demand.
+
+----------
+
+### Infrastructure
+
+The group deployed Snake Game on **Amazon Web Services (AWS)**, with infrastructure provisioned via **Terraform** and workloads orchestrated using **Kubernetes**.
+
+-   **Terraform**: Chosen as the Infrastructure-as-Code (IaC) tool, Terraform enables us to **define resources declaratively, version-control changes, and provision consistently** across environments. This reduces manual errors and ensures infrastructure can scale predictably as demand grows. 
+    
+-   **Kubernetes**: Acts as the control plane for running containerized Snake Game services. It automates deployment, scaling, and failover, while allowing us to extend the system with autoscalers and node managers:
+    
+    -   **KEDA (Kubernetes Event-Driven Autoscaler)**: Dynamically scales pods in response to demand, ensuring workloads expand or shrink in real time with user traffic.
+        
+    -   **Karpenter**: Manages the underlying compute layer by provisioning or terminating EC2 instances as needed, ensuring enough capacity for pods while keeping costs optimized.
+
+----------
+### Architecture Diagram
+
+**AWS Architecture**
+![aws architecture](images/aws_architecture.png)
+
+**Kubernetes Cluster**
+![K8s cluster](images/cluster_architecture.png)
+
+----------
+### Continuous Integration & Continuous Deployment (CI/CD)
+
+To streamline deployment and reduce manual intervention, the group implemented **GitHub Actions** as a CI/CD pipeline for both **Terraform infrastructure** and **Kubernetes resources**.
+
+-   **Terraform (Infrastructure Layer)**:
+    
+    -   A GitHub Actions workflow was set up to validate, plan, and apply Terraform configurations.
+        
+    -   This ensured that infrastructure changes (e.g., VPCs, EKS cluster, IAM roles) were version-controlled, peer-reviewed, and automatically deployed to AWS when merged into the main branch.
+        
+-   **Kubernetes (Application Layer)**:
+    
+    -   A separate workflow automated the deployment of Kubernetes manifests and Helm charts.
+        
+    -   On code commits (e.g., updates to the Snake Game image or Helm values), the workflow built the container image, pushed it to Amazon ECR, and triggered a rolling update on the EKS cluster.
+
+----------
+
+### Secure External Access
+
+To ensure secure and reliable access to the game:
+
+-   **HTTPS**: Encrypts traffic between players and the backend, protecting privacy and data integrity.
+    
+-   **ExternalDNS**: Automates DNS record management (e.g., in Route53), ensuring Snake Game is always reachable via human-friendly domain names like `snakegame.com`.
+    
+-   **Ingress**: Acts as the entry point for external requests, routing them through a load balancer to the correct backend service. This centralizes routing, security, and traffic management.
+    
+
+----------
+
+### Availability & Reliability
+
+To guarantee that the game remains responsive under varying traffic:
+
+-   **KEDA**: Monitors demand (e.g., request rates) and scales pods accordingly. Few users = fewer pods. Traffic surge = more pods.
+    
+-   **Karpenter**: Ensures Kubernetes has enough nodes to run those pods. It automatically provisions new EC2 instances during spikes and reclaims them when demand falls. Together, KEDA and Karpenter deliver elasticity and reliability.
+    
+
+----------
+
+### Observability
+
+To monitor system health and enforce SRE practices:
+
+-   **Grafana Cloud**: Provides dashboards and alerts for visualizing performance trends and responding to anomalies.
+    
+-   **Loki**: Collects and indexes logs for debugging and root cause analysis with minimal overhead.
+    
+-   **Prometheus**: Scrapes metrics and enforces SLIs/SLOs, forming the backbone of monitoring and alerting.
+
+----------
+
+### 🎯 **Project Outcomes**
+
+-   **Cloud-Native Deployment**: Successfully containerized and deployed the Snake Game on AWS using Kubernetes.
+    
+-   **Infrastructure as Code**: Provisioned infrastructure with Terraform, ensuring reproducibility and scalability.
+    
+-   **Secure External Access**: Configured HTTPS, DNS automation (ExternalDNS), and Ingress to enable reliable, secure global access to the game.
+    
+-   **Autoscaling Implementation**:
+    
+    -   **Pod-level scaling** via KEDA based on real-time traffic demand.
+        
+    -   **Node-level scaling** via Karpenter to ensure sufficient compute capacity.
+        
+-   **Monitoring & Observability**: Set up a full observability stack with Prometheus (metrics), Loki (logs), and Grafana (dashboards/alerts).
+    
+-   **Resilience Testing**: Validated system reliability through load-testing tools (`hey`, `wrk`) and stress-test deployments to simulate spikes in demand.
+----------
+
+## :pushpin: Getting Started with this repositry
 
 ## :hammer_and_wrench: Prerequisites
 
@@ -10,7 +110,7 @@ Before you begin, ensure you have met the following requirements:
 
     https://learn.microsoft.com/en-us/windows/wsl/install
 
-    WSL allows us to run the Linux operating system on Windows machines. We do this because most programming uses Unix-based operating systems, of which MacOS is a descendant. Most SWEs that use Windows do their work in WSL to maximise compatibility between their work and work done on Linux machines. Before installing WSL, update Windows to the latest version.
+    Windows Subsystem for Linux (WSL) enables users to run a Linux environment directly on Windows machines. This is valuable because most programming workflows are designed around Unix-based operating systems, with macOS being one such derivative. Software engineers who use Windows typically rely on WSL to ensure compatibility with tools and environments commonly used on Linux systems. Before installing WSL, it is recommended to update Windows to the latest version to avoid potential issues.
 
     a. Install WSL here.
     
@@ -62,15 +162,15 @@ Before you begin, ensure you have met the following requirements:
     Default Output Format   (Leave as default as JSON)<br /><br />
 
 
-## :rocket: Installing & Deploying NTU SCTP CE10 SRE Project
+## :rocket: Cloning & Deploying this repositry
 
-To install NTU SCTP CE10 SRE Project, follow these steps:
+To clone the respositry, follow these steps:
 
-1. Clone the repository:
+1. Cloning the repository:
 
-   a. Make a new directory of your choice to clone the repository.
+   a. Choose a directory of your choice to clone the repository.
    
-   b. Change to this newly created directory of your choice, and perform the following commands to initialize and clone the repository.
+   b. Perform the following commands to initialize and clone the repository.
 
    git init<br />
    git clone https://github.com/growfatlikeme/capstone_private.git<br /><br />
@@ -78,13 +178,13 @@ To install NTU SCTP CE10 SRE Project, follow these steps:
 
 2. Setup Terraform Infrastructure & Amazon Elastic Kubernetes Service (EKS) Cluster using Github Actions of the Github repository.
 
-    ![Alt text] (images/01_Github Actions Top Menu.jpg)
+    ![Github Actions](images/actions.jpg)
    
    Click on **"OIDC Terraform setup"** to run the workflow to setup the Terraform infrastructure.
 
-    ![Alt text] (images/02_GitHub Action Choice of Menu.jpg)
+    ![Github Actions menu](images/workflow.png)
 
-    It will take about 15 - 25 minutes to bring up the network infrastructure. Be patience.<br />
+    It will take about 15 - 25 minutes to bring up the network infrastructure. Be patient.<br />
 
     Workflow status will prompt you the successful completion of the Terraform setup.<br /><br />
 
@@ -93,9 +193,9 @@ To install NTU SCTP CE10 SRE Project, follow these steps:
 
    Click on **"Deploy Helm"** to run the workflow to deploy all the helm charts of the required resources/components.
 
-    ![Alt text] (images/02_GitHub Action Choice of Menu.jpg)
+    ![Github Actions menu](images/workflow.png)
 
-   It will take about 15 - 25 minutes to complete the helm deployment. Be patience too.<br />
+   It will take about 15 - 25 minutes to complete the helm deployment. Be patient too.<br />
 
    Workflow status will prompt you the successful completion of the Helm deployment.<br /><br />
 
@@ -104,11 +204,11 @@ To install NTU SCTP CE10 SRE Project, follow these steps:
 
 Click on **"OIDC Terraform Teardown"** to run the workflow to deploy all the helm charts of the required resources/components.
 
-  ![Alt text] (images/02_GitHub Action Choice of Menu.jpg)
+  ![Github Actions menu](images/workflow.png)
 
-It will take about 20 minutes to complete the tearing down of the whole cluster and deployment. Be patience again too.<br />
+It will take about 20 minutes to complete the tearing down of the whole cluster and deployment. Be patient again too.<br />
 
-Workflow status will prompt you the successful completion of the Helm deployment.<br /><br />
+Workflow status will indicate the successful completion of the Helm deployment.<br /><br />
 
 
 ## :bookmark_tabs: GitBook
