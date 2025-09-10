@@ -34,12 +34,12 @@ resource "aws_iam_policy" "loki_s3_policy" {
           "s3:PutObject",
           "s3:DeleteObject"
         ]
-        Resource = "arn:aws:s3:::${local.name_prefix}-logging/*"
+        Resource = "arn:aws:s3:::group3-sre-logging/*"
       },
       {
         Effect = "Allow"
         Action = "s3:ListBucket"
-        Resource = "arn:aws:s3:::${local.name_prefix}-logging"
+        Resource = "arn:aws:s3:::group3-sre-logging"
       }
     ]
   })
