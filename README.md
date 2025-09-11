@@ -111,6 +111,7 @@ Before you begin, ensure you have met the following requirements:
     https://learn.microsoft.com/en-us/windows/wsl/install
 
     Windows Subsystem for Linux (WSL) enables users to run a Linux environment directly on Windows machines. This is valuable because most programming workflows are designed around Unix-based operating systems, with macOS being one such derivative. Software engineers who use Windows typically rely on WSL to ensure compatibility with tools and environments commonly used on Linux systems. Before installing WSL, it is recommended to update Windows to the latest version to avoid potential issues.
+    Windows Subsystem for Linux (WSL) enables users to run a Linux environment directly on Windows machines. This is valuable because most programming workflows are designed around Unix-based operating systems, with macOS being one such derivative. Software engineers who use Windows typically rely on WSL to ensure compatibility with tools and environments commonly used on Linux systems. Before installing WSL, it is recommended to update Windows to the latest version to avoid potential issues.
 
     a. Install WSL here.
     
@@ -163,13 +164,18 @@ Before you begin, ensure you have met the following requirements:
 
 
 ## :rocket: Cloning & Deploying this repositry
+## :rocket: Cloning & Deploying this repositry
 
+To clone the respositry, follow these steps:
 To clone the respositry, follow these steps:
 
 1. Cloning the repository:
+1. Cloning the repository:
 
    a. Choose a directory of your choice to clone the repository.
+   a. Choose a directory of your choice to clone the repository.
    
+   b. Perform the following commands to initialize and clone the repository.
    b. Perform the following commands to initialize and clone the repository.
 
    git init<br />
@@ -179,11 +185,14 @@ To clone the respositry, follow these steps:
 2. Setup Terraform Infrastructure & Amazon Elastic Kubernetes Service (EKS) Cluster using Github Actions of the Github repository.
 
     ![Github Actions](images/actions.jpg)
+    ![Github Actions](images/actions.jpg)
    
    Click on **"OIDC Terraform setup"** to run the workflow to setup the Terraform infrastructure.
 
     ![Github Actions menu](images/workflow.png)
+    ![Github Actions menu](images/workflow.png)
 
+    It will take about 15 - 25 minutes to bring up the network infrastructure. Be patient.<br />
     It will take about 15 - 25 minutes to bring up the network infrastructure. Be patient.<br />
 
     Workflow status will prompt you the successful completion of the Terraform setup.<br /><br />
@@ -194,7 +203,9 @@ To clone the respositry, follow these steps:
    Click on **"Deploy Helm"** to run the workflow to deploy all the helm charts of the required resources/components.
 
     ![Github Actions menu](images/workflow.png)
+    ![Github Actions menu](images/workflow.png)
 
+   It will take about 15 - 25 minutes to complete the helm deployment. Be patient too.<br />
    It will take about 15 - 25 minutes to complete the helm deployment. Be patient too.<br />
 
    Workflow status will prompt you the successful completion of the Helm deployment.<br /><br />
@@ -205,9 +216,12 @@ To clone the respositry, follow these steps:
 Click on **"OIDC Terraform Teardown"** to run the workflow to deploy all the helm charts of the required resources/components.
 
   ![Github Actions menu](images/workflow.png)
+  ![Github Actions menu](images/workflow.png)
 
 It will take about 20 minutes to complete the tearing down of the whole cluster and deployment. Be patient again too.<br />
+It will take about 20 minutes to complete the tearing down of the whole cluster and deployment. Be patient again too.<br />
 
+Workflow status will indicate the successful completion of the Helm deployment.<br /><br />
 Workflow status will indicate the successful completion of the Helm deployment.<br /><br />
 
 
