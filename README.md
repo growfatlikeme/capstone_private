@@ -73,7 +73,7 @@ To guarantee that the game remains responsive under varying traffic:
 
 To monitor system health and enforce SRE practices:
 
--   **Grafana Cloud**: Provides dashboards and alerts for visualizing performance trends and responding to anomalies.
+-   **Grafana**: Provides dashboards and alerts for visualizing performance trends and responding to anomalies.
     
 -   **Loki**: Collects and indexes logs for debugging and root cause analysis with minimal overhead.
     
@@ -95,7 +95,7 @@ To monitor system health and enforce SRE practices:
         
     -   **Node-level scaling** via Karpenter to ensure sufficient compute capacity.
         
--   **Monitoring & Observability**: Set up a full observability stack with Prometheus (metrics), Loki (logs), and Grafana (dashboards/alerts).
+-   **Monitoring & Observability**: Set up a full observability stack with Prometheus (metrics), Alert manager,Loki (logs), and Grafana (dashboards/alerts).
     
 -   **Resilience Testing**: Validated system reliability through load-testing tools (`hey`, `wrk`) and stress-test deployments to simulate spikes in demand.
 ----------
