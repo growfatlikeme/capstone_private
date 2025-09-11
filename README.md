@@ -100,7 +100,7 @@ To monitor system health and enforce SRE practices:
 -   **Resilience Testing**: Validated system reliability through load-testing tools (`hey`, `wrk`) and stress-test deployments to simulate spikes in demand.
 ----------
 
-## :pushpin: Getting Started with this repositry
+## :pushpin: Getting Started with this repository
 
 ## :hammer_and_wrench: Prerequisites
 
