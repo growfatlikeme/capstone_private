@@ -145,7 +145,7 @@ Before you begin, ensure you have met the following requirements:
    Default Region Name (Enter region name)<br />
    Default Output Format (Leave as default as JSON)<br /><br />
 
-## :rocket: Cloning & Deploying this repositry
+## :rocket: Cloning & Deploying this repository
 
 To clone the respositry, follow these steps:
 
